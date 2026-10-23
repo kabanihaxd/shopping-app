@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { RATES_URL, ShoppingList } from './shopping-list';
+import { provideFakeListsStore } from '../testing/fake-lists-store';
 
 describe('ShoppingList', () => {
   let component: ShoppingList;
@@ -12,7 +13,12 @@ describe('ShoppingList', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ShoppingList],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideFakeListsStore(),
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ShoppingList);

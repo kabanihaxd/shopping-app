@@ -29,6 +29,32 @@ h1 {
   font-size: 0.95rem;
 }
 
+.members li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  font-size: 0.95rem;
+}
+
+.members small {
+  color: #666;
+}
+
+.invite-input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.hint {
+  margin-top: -0.5rem;
+  color: #999;
+  font-size: 0.85rem;
+}
+
 .rate {
   margin: -0.5rem 0 1rem;
   color: #999;

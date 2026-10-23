@@ -20,10 +20,19 @@
     @for (list of store.lists(); track list.id) {
       <li>
         <a class="list-link" [routerLink]="['/list', list.id]">
-          <span class="list-name">{{ list.name }}</span>
+          <span class="list-name">
+            {{ list.name }}
+            @if (list.members.length > 1) {
+              <span class="shared" title="Общий список">👥 {{ list.members.length }}</span>
+            }
+          </span>
           <span class="list-meta">осталось {{ list.toBuy.length }} из {{ list.toBuy.length + list.bought.length }}</span>
         </a>
-        <button class="remove-btn" (click)="delete(list.id, list.name)" aria-label="Удалить список">×</button>
+        <button
+          class="remove-btn"
+          (click)="delete(list)"
+          [attr.aria-label]="list.ownerEmail === store.email() ? 'Удалить список' : 'Выйти из списка'"
+        >×</button>
       </li>
     }
   </ul>

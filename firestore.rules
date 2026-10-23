@@ -1,0 +1,44 @@
+rules_version = '2';
+
+// Правила доступа к базе. Их проверяет сервер Firebase — обойти их из браузера нельзя.
+// Скопируй этот файл в Firebase Console → Firestore Database → Rules → Publish.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    match /lists/{listId} {
+      function isMember() {
+        return signedIn() && myEmail() in resource.data.members;
+      }
+
+      function isOwner() {
+        return signedIn() && resource.data.ownerEmail == myEmail();
+      }
+
+      // Видеть список могут только те, кто в members
+      allow read: if isMember();
+
+      // Создать можно только свой список, где ты единственный участник
+      allow create: if signedIn()
+        && request.resource.data.ownerEmail == myEmail()
+        && request.resource.data.members == [myEmail()];
+
+      // Менять товары может любой участник; менять состав участников — только владелец.
+      // Исключение: участник может удалить из members себя (выйти из списка).
+      allow update: if isMember()
+        && request.resource.data.ownerEmail == resource.data.ownerEmail
+        && (isOwner()
+          || request.resource.data.members == resource.data.members
+          || request.resource.data.members == resource.data.members.removeAll([myEmail()]));
+
+      // Удалить список целиком может только владелец
+      allow delete: if isOwner();
+    }
+  }
+}

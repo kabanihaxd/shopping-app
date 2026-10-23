@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { ListsStore } from '../lists-store';
+import { ListsStore, ShoppingListData } from '../lists-store';
 
 @Component({
   imports: [RouterLink],
@@ -20,9 +20,13 @@ export class ListsPage {
     this.router.navigate(['/list', id]);
   }
 
-  protected delete(id: string, name: string) {
-    if (confirm(`Удалить список «${name}»?`)) {
-      this.store.deleteList(id);
+  protected delete(list: ShoppingListData) {
+    const question =
+      list.ownerEmail === this.store.email()
+        ? `Удалить список «${list.name}» у всех участников?`
+        : `Выйти из списка «${list.name}»? Он пропадёт только у вас.`;
+    if (confirm(question)) {
+      this.store.deleteList(list.id);
     }
   }
 }

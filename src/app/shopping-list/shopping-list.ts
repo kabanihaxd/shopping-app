@@ -91,4 +91,18 @@ export class ShoppingList {
   protected clearBought() {
     this.store.update(this.id(), (l) => ({ ...l, bought: [] }));
   }
+
+  /** Владелец списка может приглашать и убирать участников */
+  protected readonly isOwner = computed(() => this.list()?.ownerEmail === this.store.email());
+
+  protected invite(emailInput: HTMLInputElement) {
+    const email = emailInput.value.trim();
+    if (!email.includes('@')) return;
+    this.store.share(this.id(), email);
+    emailInput.value = '';
+  }
+
+  protected removeMember(email: string) {
+    this.store.unshare(this.id(), email);
+  }
 }

@@ -82,5 +82,32 @@
       ></li>
     }
   </ul>
+
+  <h2>Доступ</h2>
+  <ul class="members">
+    @for (email of list()!.members; track email) {
+      <li>
+        {{ email }}
+        @if (email === list()!.ownerEmail) {
+          <small>(владелец)</small>
+        } @else if (isOwner()) {
+          <button class="clear-btn" (click)="removeMember(email)">Убрать</button>
+        }
+      </li>
+    }
+  </ul>
+  @if (isOwner()) {
+    <div class="add-row">
+      <input
+        #inviteEmail
+        class="invite-input"
+        type="email"
+        placeholder="Email (Google-аккаунт)"
+        (keydown.enter)="invite(inviteEmail)"
+      />
+      <button class="add-btn" (click)="invite(inviteEmail)">Пригласить</button>
+    </div>
+    <p class="hint">Приглашённый войдёт на сайт через Google с этим email — и сразу увидит список.</p>
+  }
   }
 </div>

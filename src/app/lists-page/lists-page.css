@@ -75,6 +75,13 @@ li:hover {
   font-weight: 600;
 }
 
+.shared {
+  font-weight: normal;
+  font-size: 0.8rem;
+  color: #666;
+  margin-left: 0.25rem;
+}
+
 .list-meta {
   color: #666;
   font-size: 0.9rem;

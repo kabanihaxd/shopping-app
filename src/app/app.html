@@ -1,1 +1,22 @@
-<router-outlet />
+@if (store.error(); as error) {
+  <div class="error-banner">
+    Ошибка: {{ error }}
+    <button (click)="store.error.set(null)" aria-label="Закрыть">×</button>
+  </div>
+}
+
+@if (store.loading()) {
+  <p class="status">Загрузка…</p>
+} @else if (!store.user()) {
+  <div class="login">
+    <h1>Мои списки покупок</h1>
+    <p>Войдите, чтобы ваши списки были на всех устройствах и ими можно было делиться.</p>
+    <button class="login-btn" (click)="store.signIn()">Войти через Google</button>
+  </div>
+} @else {
+  <header class="user-bar">
+    <span>{{ store.user()!.email }}</span>
+    <button class="logout-btn" (click)="store.signOut()">Выйти</button>
+  </header>
+  <router-outlet />
+}
