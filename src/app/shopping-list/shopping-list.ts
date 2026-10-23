@@ -40,7 +40,7 @@ export class ShoppingList {
 
   /** Курс евро из интернета: загружается сам при открытии страницы */
   protected readonly rates = httpResource<RatesResponse>(() => RATES_URL);
-  protected readonly rubRate = computed(() => this.rates.value()?.rates['RUB']);
+  protected readonly uahRate = computed(() => this.rates.value()?.rates['UAH']);
 
   protected add(nameInput: HTMLInputElement, qtyInput: HTMLInputElement, priceInput: HTMLInputElement) {
     const name = nameInput.value.trim();

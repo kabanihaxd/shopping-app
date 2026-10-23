@@ -11,8 +11,8 @@
       Осталось купить: {{ remaining() }} из {{ total() }}
       @if (remainingCost() > 0) {
         — на {{ remainingCost() | currency: 'EUR' }}
-        @if (rubRate()) {
-          (≈ {{ remainingCost() * rubRate()! | currency: 'RUB' : 'symbol-narrow' : '1.0-0' }})
+        @if (uahRate()) {
+          (≈ {{ remainingCost() * uahRate()! | currency: 'UAH' : 'symbol-narrow' : '1.0-0' }})
         }
       }
     </p>
@@ -24,8 +24,8 @@
     } @else if (rates.error()) {
       Не удалось загрузить курс евро.
       <button class="retry-btn" (click)="rates.reload()">Повторить</button>
-    } @else if (rubRate()) {
-      Курс: 1 € = {{ rubRate() | number: '1.2-2' }} ₽
+    } @else if (uahRate()) {
+      Курс: 1 € = {{ uahRate() | number: '1.2-2' }} ₴
     }
   </p>
 

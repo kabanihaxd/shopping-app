@@ -28,7 +28,7 @@ describe('ShoppingList', () => {
     // В тестах нет интернета: отвечаем на запрос курса сами
     http = TestBed.inject(HttpTestingController);
     TestBed.tick();
-    http.expectOne(RATES_URL).flush({ rates: { RUB: 90 } });
+    http.expectOne(RATES_URL).flush({ rates: { UAH: 50 } });
     await fixture.whenStable();
   });
 
