@@ -5,6 +5,13 @@
   </div>
 }
 
+@if (updateReady()) {
+  <div class="update-banner">
+    Доступна нова версія застосунку.
+    <button (click)="reload()">Оновити</button>
+  </div>
+}
+
 @if (store.loading()) {
   <p class="status">Завантаження…</p>
 } @else if (!store.user()) {

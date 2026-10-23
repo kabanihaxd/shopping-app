@@ -16,8 +16,10 @@ import {
   collection,
   deleteDoc,
   doc,
-  getFirestore,
+  initializeFirestore,
   onSnapshot,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   query,
   setDoc,
   updateDoc,
@@ -99,7 +101,10 @@ function loadLocalLists(): { name: string; toBuy: Item[]; bought: Item[] }[] {
 export class ListsStore {
   private readonly app = initializeApp(firebaseConfig);
   private readonly auth = getAuth(this.app);
-  private readonly db = getFirestore(this.app);
+  // Кэш на устройстве: списки открываются и меняются даже без интернета (в магазине без связи)
+  private readonly db = initializeFirestore(this.app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  });
   private readonly listsRef = collection(this.db, 'lists');
   private stopListening?: Unsubscribe;
 

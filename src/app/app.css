@@ -56,6 +56,28 @@
   color: #666;
 }
 
+.update-banner {
+  max-width: 520px;
+  margin: 1rem auto 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: #e8f5e9;
+  color: #1b5e20;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.update-banner button {
+  background: #2e7d32;
+  color: white;
+  border: 0;
+  border-radius: 6px;
+  padding: 0.3rem 0.8rem;
+  cursor: pointer;
+}
+
 .error-banner {
   max-width: 520px;
   margin: 1rem auto 0;
