@@ -63,7 +63,7 @@ function loadItems(raw: unknown): Item[] {
 function toList(id: string, data: DocumentData): ShoppingListData {
   return {
     id,
-    name: data['name'] ?? 'Без названия',
+    name: data['name'] ?? 'Без назви',
     ownerEmail: data['ownerEmail'] ?? '',
     members: data['members'] ?? [],
     toBuy: loadItems(data['toBuy']),
@@ -78,7 +78,7 @@ function loadLocalLists(): { name: string; toBuy: Item[]; bought: Item[] }[] {
   if (saved) {
     const raw = JSON.parse(saved) as { name?: string; toBuy?: unknown; bought?: unknown }[];
     return raw.map((l) => ({
-      name: l.name ?? 'Без названия',
+      name: l.name ?? 'Без назви',
       toBuy: loadItems(l.toBuy),
       bought: loadItems(l.bought),
     }));
@@ -86,7 +86,7 @@ function loadLocalLists(): { name: string; toBuy: Item[]; bought: Item[] }[] {
   const old = localStorage.getItem(OLD_STORAGE_KEY);
   if (old) {
     const data = JSON.parse(old) as { toBuy?: unknown; bought?: unknown };
-    return [{ name: 'Мой список покупок', toBuy: loadItems(data.toBuy), bought: loadItems(data.bought) }];
+    return [{ name: 'Мій список покупок', toBuy: loadItems(data.toBuy), bought: loadItems(data.bought) }];
   }
   return [];
 }

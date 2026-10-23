@@ -38,7 +38,7 @@ describe('ShoppingList', () => {
 
   it('should show "not found" for an unknown list', () => {
     const h1 = (fixture.nativeElement as HTMLElement).querySelector('h1');
-    expect(h1?.textContent).toContain('Список не найден');
+    expect(h1?.textContent).toContain('Список не знайдено');
   });
 
   it('should request the euro exchange rate only once', () => {

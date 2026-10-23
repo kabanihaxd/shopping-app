@@ -1,19 +1,19 @@
 <div class="card">
-  <h1>Мои списки покупок</h1>
+  <h1>Мої списки покупок</h1>
 
   <div class="add-row">
     <input
       #newList
       class="name-input"
       type="text"
-      placeholder="Название нового списка"
+      placeholder="Назва нового списку"
       (keydown.enter)="create(newList)"
     />
-    <button class="add-btn" (click)="create(newList)">Создать</button>
+    <button class="add-btn" (click)="create(newList)">Створити</button>
   </div>
 
   @if (store.lists().length === 0) {
-    <p class="empty">Списков пока нет — создайте первый.</p>
+    <p class="empty">Списків поки немає — створіть перший.</p>
   }
 
   <ul>
@@ -23,15 +23,15 @@
           <span class="list-name">
             {{ list.name }}
             @if (list.members.length > 1) {
-              <span class="shared" title="Общий список">👥 {{ list.members.length }}</span>
+              <span class="shared" title="Спільний список">👥 {{ list.members.length }}</span>
             }
           </span>
-          <span class="list-meta">осталось {{ list.toBuy.length }} из {{ list.toBuy.length + list.bought.length }}</span>
+          <span class="list-meta">залишилось {{ list.toBuy.length }} з {{ list.toBuy.length + list.bought.length }}</span>
         </a>
         <button
           class="remove-btn"
           (click)="delete(list)"
-          [attr.aria-label]="list.ownerEmail === store.email() ? 'Удалить список' : 'Выйти из списка'"
+          [attr.aria-label]="list.ownerEmail === store.email() ? 'Видалити список' : 'Вийти зі списку'"
         >×</button>
       </li>
     }

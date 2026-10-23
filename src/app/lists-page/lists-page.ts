@@ -23,8 +23,8 @@ export class ListsPage {
   protected delete(list: ShoppingListData) {
     const question =
       list.ownerEmail === this.store.email()
-        ? `Удалить список «${list.name}» у всех участников?`
-        : `Выйти из списка «${list.name}»? Он пропадёт только у вас.`;
+        ? `Видалити список «${list.name}» у всіх учасників?`
+        : `Вийти зі списку «${list.name}»? Він зникне лише у вас.`;
     if (confirm(question)) {
       this.store.deleteList(list.id);
     }

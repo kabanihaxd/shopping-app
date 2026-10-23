@@ -22,6 +22,6 @@ describe('App', () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/');
     const h1 = (harness.routeNativeElement as HTMLElement).querySelector('h1');
-    expect(h1?.textContent).toContain('Мои списки покупок');
+    expect(h1?.textContent).toContain('Мої списки покупок');
   });
 });

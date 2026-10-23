@@ -57,3 +57,8 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Use the `providedIn: 'root'` option for singleton services
 - Prefer the `@Service` decorator over `@Injectable({providedIn: 'root'})` for new singleton services (Angular v22+)
 - Use the `inject()` function instead of constructor injection
+
+## Language
+
+- All user-facing text (labels, buttons, placeholders, aria-labels, titles, messages, confirm dialogs, default names) MUST be in Ukrainian. Applies to every new component and change.
+- Code comments may stay in Russian (the developer reads Russian).
