@@ -4,8 +4,9 @@ import {
   GoogleAuthProvider,
   User,
   getAuth,
+  getRedirectResult,
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithRedirect,
   signOut,
 } from 'firebase/auth';
 import {
@@ -119,6 +120,9 @@ export class ListsStore {
   readonly lists = computed(() => [...this.allLists()].sort((a, b) => a.createdAt - b.createdAt));
 
   constructor() {
+    // Если вернулись со страницы входа Google с ошибкой — показать её
+    getRedirectResult(this.auth).catch((e) => this.fail(e));
+
     onAuthStateChanged(this.auth, (user) => {
       this.stopListening?.();
       this.allLists.set([]);
@@ -146,8 +150,13 @@ export class ListsStore {
     });
   }
 
+  /**
+   * Вход через переход на страницу Google и обратно (не всплывающее окно):
+   * так работает и в Safari на iPhone, и в приложении с главного экрана.
+   * Работает, потому что authDomain совпадает с адресом сайта (см. firebase-config.ts).
+   */
   signIn() {
-    signInWithPopup(this.auth, new GoogleAuthProvider()).catch((e) => this.fail(e));
+    signInWithRedirect(this.auth, new GoogleAuthProvider()).catch((e) => this.fail(e));
   }
 
   signOut() {

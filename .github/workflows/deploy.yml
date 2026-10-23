@@ -1,5 +1,9 @@
 name: Deploy to GitHub Pages
 
+# Сайт переехал на Firebase Hosting (shopping-app-78237.web.app).
+# На старом адресе GitHub Pages теперь только страница-указатель на новый адрес
+# и ngsw-worker.js, который удаляет у посетителей старую офлайн-копию приложения.
+
 on:
   push:
     branches: [main]
@@ -19,15 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npx ng build --base-href /shopping-app/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist/shopping-app/browser
+          path: github-pages-redirect
 
   deploy:
     needs: build
