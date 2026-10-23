@@ -65,11 +65,19 @@
   </ul>
 
   <div class="section-header">
-    <h2>Уже купил @if (boughtCost() > 0) { <small>({{ boughtCost() | currency: 'EUR' }})</small> }</h2>
+    <h2>Уже купил</h2>
     @if (bought().length > 0) {
       <button class="clear-btn" (click)="clearBought()">Очистить</button>
     }
   </div>
+  @if (boughtCost() > 0) {
+    <p class="counter">
+      Потрачено: {{ boughtCost() | currency: 'EUR' }}
+      @if (uahRate()) {
+        (≈ {{ boughtCost() * uahRate()! | currency: 'UAH' : 'symbol-narrow' : '1.0-0' }})
+      }
+    </p>
+  }
   <ul>
     @for (item of bought(); track item.id) {
       <li

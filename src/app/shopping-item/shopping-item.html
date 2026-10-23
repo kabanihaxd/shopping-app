@@ -23,15 +23,13 @@
 } @else {
   <span class="item-main">
     <span class="item-name">{{ item().name }}</span>
-    @if (item().quantity > 1 || item().price > 0) {
-      <span class="item-meta">
-        {{ item().quantity }} шт
-        @if (item().price > 0) {
-          × {{ item().price | currency: 'EUR' }} =
-          <b>{{ item().quantity * item().price | currency: 'EUR' }}</b>
-        }
-      </span>
-    }
+    <span class="item-meta">
+      {{ item().quantity }} шт
+      @if (item().price > 0) {
+        × {{ item().price | currency: 'EUR' }} =
+        <b>{{ item().quantity * item().price | currency: 'EUR' }}</b>
+      }
+    </span>
   </span>
   <span class="actions">
     <button
