@@ -11,9 +11,23 @@
       Осталось купить: {{ remaining() }} из {{ total() }}
       @if (remainingCost() > 0) {
         — на {{ remainingCost() | currency: 'EUR' }}
+        @if (rubRate()) {
+          (≈ {{ remainingCost() * rubRate()! | currency: 'RUB' : 'symbol-narrow' : '1.0-0' }})
+        }
       }
     </p>
   }
+
+  <p class="rate">
+    @if (rates.isLoading()) {
+      Загружаю курс евро…
+    } @else if (rates.error()) {
+      Не удалось загрузить курс евро.
+      <button class="retry-btn" (click)="rates.reload()">Повторить</button>
+    } @else if (rubRate()) {
+      Курс: 1 € = {{ rubRate() | number: '1.2-2' }} ₽
+    }
+  </p>
 
   <div class="add-row">
     <input

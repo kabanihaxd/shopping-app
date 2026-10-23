@@ -1,16 +1,24 @@
 import { Component, computed, inject, input } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { Item } from '../item';
 import { ListsStore } from '../lists-store';
 import { ShoppingItem } from '../shopping-item/shopping-item';
+
+export const RATES_URL = 'https://open.er-api.com/v6/latest/EUR';
+
+/** Ответ API курсов валют (берём только нужные поля) */
+type RatesResponse = {
+  rates: Record<string, number>;
+};
 
 function sumCost(list: Item[]): number {
   return list.reduce((sum, x) => sum + x.quantity * x.price, 0);
 }
 
 @Component({
-  imports: [CurrencyPipe, RouterLink, ShoppingItem],
+  imports: [CurrencyPipe, DecimalPipe, RouterLink, ShoppingItem],
   selector: 'app-shopping-list',
   styleUrl: './shopping-list.css',
   templateUrl: './shopping-list.html',
@@ -29,6 +37,10 @@ export class ShoppingList {
   protected readonly total = computed(() => this.toBuy().length + this.bought().length);
   protected readonly remainingCost = computed(() => sumCost(this.toBuy()));
   protected readonly boughtCost = computed(() => sumCost(this.bought()));
+
+  /** Курс евро из интернета: загружается сам при открытии страницы */
+  protected readonly rates = httpResource<RatesResponse>(() => RATES_URL);
+  protected readonly rubRate = computed(() => this.rates.value()?.rates['RUB']);
 
   protected add(nameInput: HTMLInputElement, qtyInput: HTMLInputElement, priceInput: HTMLInputElement) {
     const name = nameInput.value.trim();
