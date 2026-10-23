@@ -5,7 +5,35 @@
   gap: 0.5rem;
   padding: 0.5rem;
   border-bottom: 1px solid #eee;
+}
+
+.item-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* Квадратик-галочка: только он переносит товар в «Уже купил» и обратно */
+.check-btn {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid #2e7d32;
+  border-radius: 4px;
+  background: transparent;
+  color: white;
+  font-size: 0.9rem;
+  line-height: 1;
   cursor: pointer;
+}
+
+.check-btn:hover {
+  background: #e8f5e9;
+}
+
+:host(.bought) .check-btn {
+  background: #2e7d32;
 }
 
 :host(.bought) {

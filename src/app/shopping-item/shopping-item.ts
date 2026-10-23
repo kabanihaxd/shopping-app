@@ -13,6 +13,10 @@ export class ShoppingItem {
   private readonly fb = inject(NonNullableFormBuilder);
 
   readonly item = input.required<Item>();
+  /** Товар уже куплен — галочка закрашена */
+  readonly bought = input(false);
+  /** Нажали на галочку: перенести в «Уже купил» или обратно */
+  readonly toggle = output();
   readonly remove = output();
   readonly save = output<Item>();
 
