@@ -1,0 +1,44 @@
+:host {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+}
+
+:host(.bought) {
+  background: #e8f5e9;
+}
+
+:host(.bought) .item-name {
+  text-decoration: line-through;
+}
+
+.item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.item-meta {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.remove-btn {
+  background: transparent;
+  border: 0;
+  color: #999;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.4rem;
+  border-radius: 4px;
+}
+
+.remove-btn:hover {
+  background: #ffcdd2;
+  color: #c62828;
+}

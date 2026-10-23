@@ -1,0 +1,30 @@
+<div class="card">
+  <h1>Мои списки покупок</h1>
+
+  <div class="add-row">
+    <input
+      #newList
+      class="name-input"
+      type="text"
+      placeholder="Название нового списка"
+      (keydown.enter)="create(newList)"
+    />
+    <button class="add-btn" (click)="create(newList)">Создать</button>
+  </div>
+
+  @if (store.lists().length === 0) {
+    <p class="empty">Списков пока нет — создайте первый.</p>
+  }
+
+  <ul>
+    @for (list of store.lists(); track list.id) {
+      <li>
+        <a class="list-link" [routerLink]="['/list', list.id]">
+          <span class="list-name">{{ list.name }}</span>
+          <span class="list-meta">осталось {{ list.toBuy.length }} из {{ list.toBuy.length + list.bought.length }}</span>
+        </a>
+        <button class="remove-btn" (click)="delete(list.id, list.name)" aria-label="Удалить список">×</button>
+      </li>
+    }
+  </ul>
+</div>

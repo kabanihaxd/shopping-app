@@ -1,0 +1,17 @@
+<span class="item-main">
+  <span class="item-name">{{ item().name }}</span>
+  @if (item().quantity > 1 || item().price > 0) {
+    <span class="item-meta">
+      {{ item().quantity }} шт
+      @if (item().price > 0) {
+        × {{ item().price | currency: 'EUR' }} =
+        <b>{{ item().quantity * item().price | currency: 'EUR' }}</b>
+      }
+    </span>
+  }
+</span>
+<button
+  class="remove-btn"
+  (click)="$event.stopPropagation(); remove.emit()"
+  aria-label="Удалить"
+>×</button>

@@ -1,0 +1,71 @@
+<div class="card">
+  <a class="back-link" routerLink="/">← Все списки</a>
+
+  @if (!list()) {
+    <h1>Список не найден</h1>
+  } @else {
+  <h1>{{ list()!.name }}</h1>
+
+  @if (total() > 0) {
+    <p class="counter">
+      Осталось купить: {{ remaining() }} из {{ total() }}
+      @if (remainingCost() > 0) {
+        — на {{ remainingCost() | currency: 'EUR' }}
+      }
+    </p>
+  }
+
+  <div class="add-row">
+    <input
+      #newItem
+      class="name-input"
+      type="text"
+      placeholder="Что купить?"
+      (keydown.enter)="add(newItem, newQty, newPrice)"
+    />
+    <input
+      #newQty
+      class="num-input"
+      type="number"
+      min="1"
+      placeholder="Кол-во"
+      (keydown.enter)="add(newItem, newQty, newPrice)"
+    />
+    <input
+      #newPrice
+      class="num-input"
+      type="number"
+      min="0"
+      step="0.01"
+      placeholder="Цена, €"
+      (keydown.enter)="add(newItem, newQty, newPrice)"
+    />
+    <button class="add-btn" (click)="add(newItem, newQty, newPrice)">Добавить</button>
+  </div>
+
+  <h2>Нужно купить</h2>
+  <ul>
+    @for (item of toBuy(); track item.id) {
+      <li app-shopping-item [item]="item" (click)="buy(item)" (remove)="remove(item)"></li>
+    }
+  </ul>
+
+  <div class="section-header">
+    <h2>Уже купил @if (boughtCost() > 0) { <small>({{ boughtCost() | currency: 'EUR' }})</small> }</h2>
+    @if (bought().length > 0) {
+      <button class="clear-btn" (click)="clearBought()">Очистить</button>
+    }
+  </div>
+  <ul>
+    @for (item of bought(); track item.id) {
+      <li
+        app-shopping-item
+        class="bought"
+        [item]="item"
+        (click)="returnItem(item)"
+        (remove)="remove(item)"
+      ></li>
+    }
+  </ul>
+  }
+</div>
