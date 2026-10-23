@@ -67,6 +67,15 @@ export class ShoppingList {
     }));
   }
 
+  protected updateItem(updated: Item) {
+    const replace = (items: Item[]) => items.map((x) => (x.id === updated.id ? updated : x));
+    this.store.update(this.id(), (l) => ({
+      ...l,
+      toBuy: replace(l.toBuy),
+      bought: replace(l.bought),
+    }));
+  }
+
   protected clearBought() {
     this.store.update(this.id(), (l) => ({ ...l, bought: [] }));
   }

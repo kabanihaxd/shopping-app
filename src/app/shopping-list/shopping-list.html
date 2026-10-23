@@ -46,7 +46,7 @@
   <h2>Нужно купить</h2>
   <ul>
     @for (item of toBuy(); track item.id) {
-      <li app-shopping-item [item]="item" (click)="buy(item)" (remove)="remove(item)"></li>
+      <li app-shopping-item [item]="item" (click)="buy(item)" (remove)="remove(item)" (save)="updateItem($event)"></li>
     }
   </ul>
 
@@ -64,6 +64,7 @@
         [item]="item"
         (click)="returnItem(item)"
         (remove)="remove(item)"
+        (save)="updateItem($event)"
       ></li>
     }
   </ul>

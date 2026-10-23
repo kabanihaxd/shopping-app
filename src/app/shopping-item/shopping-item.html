@@ -1,17 +1,48 @@
-<span class="item-main">
-  <span class="item-name">{{ item().name }}</span>
-  @if (item().quantity > 1 || item().price > 0) {
-    <span class="item-meta">
-      {{ item().quantity }} шт
-      @if (item().price > 0) {
-        × {{ item().price | currency: 'EUR' }} =
-        <b>{{ item().quantity * item().price | currency: 'EUR' }}</b>
-      }
-    </span>
-  }
-</span>
-<button
-  class="remove-btn"
-  (click)="$event.stopPropagation(); remove.emit()"
-  aria-label="Удалить"
->×</button>
+@if (editing()) {
+  <form
+    class="edit-form"
+    [formGroup]="form"
+    (ngSubmit)="submit()"
+    (click)="$event.stopPropagation()"
+    (keydown.escape)="cancel()"
+  >
+    <input class="name-input" type="text" formControlName="name" placeholder="Название" />
+    <input class="num-input" type="number" min="1" formControlName="quantity" aria-label="Количество" />
+    <input class="num-input" type="number" min="0" step="0.01" formControlName="price" aria-label="Цена, €" />
+    <button class="save-btn" type="submit">Сохранить</button>
+    <button class="cancel-btn" type="button" (click)="cancel()">Отмена</button>
+
+    @if (form.touched && form.invalid) {
+      <p class="error">
+        @if (form.controls.name.invalid) { Введите название. }
+        @if (form.controls.quantity.invalid) { Количество — не меньше 1. }
+        @if (form.controls.price.invalid) { Цена — не меньше 0. }
+      </p>
+    }
+  </form>
+} @else {
+  <span class="item-main">
+    <span class="item-name">{{ item().name }}</span>
+    @if (item().quantity > 1 || item().price > 0) {
+      <span class="item-meta">
+        {{ item().quantity }} шт
+        @if (item().price > 0) {
+          × {{ item().price | currency: 'EUR' }} =
+          <b>{{ item().quantity * item().price | currency: 'EUR' }}</b>
+        }
+      </span>
+    }
+  </span>
+  <span class="actions">
+    <button
+      class="edit-btn"
+      (click)="$event.stopPropagation(); startEdit()"
+      aria-label="Редактировать"
+    >✎</button>
+    <button
+      class="remove-btn"
+      (click)="$event.stopPropagation(); remove.emit()"
+      aria-label="Удалить"
+    >×</button>
+  </span>
+}
