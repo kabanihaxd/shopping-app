@@ -288,6 +288,7 @@
         class="bought"
         [item]="item"
         [bought]="true"
+        [boughtInfo]="boughtInfoFor(item)"
         [categories]="categories()"
         (toggle)="returnItem(item)"
         (remove)="remove(item)"

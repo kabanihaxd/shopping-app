@@ -4,6 +4,7 @@ import { CdkDragHandle } from '@angular/cdk/drag-drop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Category } from '../category';
 import { Item, NOTE_MAX, STORE_MAX } from '../item';
+import { BoughtInfo } from '../bought-info';
 import { DealHint } from '../price-book';
 
 @Component({
@@ -20,6 +21,8 @@ export class ShoppingItem {
   readonly bought = input(false);
   /** Показать ручку ⠿ для перетаскивания (только в «Треба купити») */
   readonly showHandle = input(false);
+  /** «Оксана · 14:20» — кто и когда купил (только у купленных) */
+  readonly boughtInfo = input<BoughtInfo | null>(null);
   /** «Дешевше в Сільпо…» — подсказка из истории цен (только для товаров «треба купити») */
   readonly hint = input<DealHint | null>(null);
   /** Категории списка — для иконки и выбора в форме */

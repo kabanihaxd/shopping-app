@@ -192,3 +192,8 @@
   color: var(--accent-text);
   overflow-wrap: anywhere;
 }
+
+.item-bought-by {
+  font-size: var(--meta-font, 0.85rem);
+  color: var(--accent-text);
+}

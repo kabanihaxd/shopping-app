@@ -12,6 +12,7 @@ import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { BarcodeScanner } from '../barcode-scanner/barcode-scanner';
 import { CategoriesEditor } from '../categories-editor/categories-editor';
+import { BoughtInfo, boughtInfo } from '../bought-info';
 import { Category } from '../category';
 import { Item } from '../item';
 import { ListsStore } from '../lists-store';
@@ -178,6 +179,12 @@ export class ShoppingList {
       a.localeCompare(b, 'uk'),
     ),
   );
+
+  /** «Оксана · 14:20» у купленного: ник (а если его нет — часть почты до «@») и время */
+  protected boughtInfoFor(item: Item): BoughtInfo | null {
+    const who = item.boughtBy ? this.store.nameOf(item.boughtBy).split('@')[0] : '';
+    return boughtInfo(item.boughtAt, who);
+  }
 
   protected hintFor(item: Item) {
     return dealHint(item, this.priceBook());
@@ -534,7 +541,7 @@ export class ShoppingList {
     this.store.update(this.id(), (l) => ({
       ...l,
       toBuy: l.toBuy.filter((x) => x.id !== item.id),
-      bought: [...l.bought, { ...loose, ...(shop ? { store: shop } : {}), boughtAt: Date.now() }], // дата нужна для статистики
+      bought: [...l.bought, { ...loose, ...(shop ? { store: shop } : {}), boughtAt: Date.now(), boughtBy: this.store.email() }], // дата — для статистики, кто — для подписи
     }));
   }
 
@@ -548,7 +555,7 @@ export class ShoppingList {
   }
 
   protected returnItem(item: Item) {
-    const { boughtAt, ...unbought } = item; // вернули в «Треба купити» — даты покупки больше нет
+    const { boughtAt, boughtBy, ...unbought } = item; // вернули в «Треба купити» — ни даты, ни «кто купил» больше нет
     this.store.update(this.id(), (l) => ({
       ...l,
       bought: l.bought.filter((x) => x.id !== item.id),
@@ -642,7 +649,7 @@ export class ShoppingList {
     const records = purchasesOf(items, this.categories());
     const ids = new Set(items.map((x) => x.id));
     // Вернули в список — товар снова «треба купити»: дата покупки уже в журнале, у самого товара её нет
-    const returned = moveToBuy ? items.map(({ boughtAt, ...rest }) => rest) : [];
+    const returned = moveToBuy ? items.map(({ boughtAt, boughtBy, ...rest }) => rest) : [];
 
     this.store.update(listId, (l) => ({
       ...l,

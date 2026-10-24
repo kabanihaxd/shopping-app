@@ -19,6 +19,15 @@ describe('loadItems', () => {
     expect(loadItems([modern])).toEqual([modern]);
   });
 
+  it('keeps who bought the item and drops a broken value', () => {
+    const [a, b] = loadItems([
+      { id: '1', name: 'Молоко', boughtBy: 'oksana@example.com' },
+      { id: '2', name: 'Хліб', boughtBy: 5 },
+    ]);
+    expect(a.boughtBy).toBe('oksana@example.com');
+    expect('boughtBy' in b).toBe(false);
+  });
+
   it('keeps a trimmed store and drops an empty or broken one', () => {
     const [a, b, c] = loadItems([
       { id: '1', name: 'Молоко', store: ' Сільпо ' },

@@ -231,4 +231,24 @@ describe('ShoppingItem', () => {
       expect((fixture.nativeElement as HTMLElement).querySelector('.item-hint')).toBeNull();
     });
   });
+
+  describe('who bought', () => {
+    const info = { text: 'Оксана · 14:20', title: 'Купив(ла): Оксана\nКоли: 24.10.2026 14:20' };
+
+    it('should show who and when next to a bought item, with the full date in the tooltip', async () => {
+      fixture.componentRef.setInput('bought', true);
+      fixture.componentRef.setInput('boughtInfo', info);
+      await fixture.whenStable();
+
+      const label = (fixture.nativeElement as HTMLElement).querySelector('.item-bought-by')!;
+      expect(label.textContent).toContain('Оксана · 14:20');
+      expect(label.getAttribute('title')).toContain('24.10.2026');
+    });
+
+    it('should not show it on an item that is still to buy', async () => {
+      fixture.componentRef.setInput('boughtInfo', info);
+      await fixture.whenStable();
+      expect((fixture.nativeElement as HTMLElement).querySelector('.item-bought-by')).toBeNull();
+    });
+  });
 });

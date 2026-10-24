@@ -85,6 +85,7 @@ export function loadItems(raw: unknown): Item[] {
       price: obj.price ?? 0,
       categoryId: obj.categoryId ?? '',
       ...(typeof obj.boughtAt === 'number' ? { boughtAt: obj.boughtAt } : {}),
+      ...(typeof obj.boughtBy === 'string' && obj.boughtBy ? { boughtBy: obj.boughtBy } : {}),
       ...(obj.pinned === true ? { pinned: true } : {}),
       ...(typeof obj.note === 'string' && obj.note.trim() ? { note: obj.note.trim() } : {}),
       ...(typeof obj.store === 'string' && obj.store.trim() ? { store: obj.store.trim() } : {}),
@@ -98,7 +99,7 @@ export function loadItems(raw: unknown): Item[] {
  */
 export function copyOfList(list: ShoppingListData, email: string, now: number): Omit<ShoppingListData, 'id'> {
   const fresh = (items: Item[]) =>
-    items.map(({ boughtAt, ...item }) => ({ ...item, id: crypto.randomUUID() }));
+    items.map(({ boughtAt, boughtBy, ...item }) => ({ ...item, id: crypto.randomUUID() }));
   return {
     name: `${list.name} (копія)`,
     ownerEmail: email,

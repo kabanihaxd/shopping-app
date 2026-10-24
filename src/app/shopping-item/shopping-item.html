@@ -76,6 +76,9 @@
       @if (item().note; as note) {
         <span class="item-note">📝 {{ note }}</span>
       }
+      @if (bought() && boughtInfo(); as info) {
+        <span class="item-bought-by" [title]="info.title">✓ {{ info.text }}</span>
+      }
       @if (hint(); as deal) {
         <span class="item-hint" [title]="deal.title">💡 {{ deal.text }}</span>
       }

@@ -1020,3 +1020,55 @@ describe('магазин у товара и где дешевле', () => {
     expect(hints(page)[0]).toContain('Дешевше в АТБ: €1.10');
   });
 });
+
+describe('кто купил', () => {
+  const label = (page: HTMLElement) => page.querySelector('li.bought .item-bought-by')?.textContent?.replace(/\s+/g, ' ').trim();
+
+  it('signs a bought item with the buyer nickname and the time', async () => {
+    const { store, page, list, row, stable } = await openList([item('Молоко')]);
+    store.nicknames.set({ 'me@example.com': 'Оксана' });
+
+    row('Молоко').querySelector<HTMLButtonElement>('.check-btn')!.click();
+    await stable();
+
+    expect(list().bought[0].boughtBy).toBe('me@example.com');
+    expect(label(page)).toMatch(/^✓ Оксана · \d{2}:\d{2}$/);
+  });
+
+  it('falls back to the part of the email before «@» when there is no nickname', async () => {
+    const { page, row, stable } = await openList([item('Молоко')]);
+
+    row('Молоко').querySelector<HTMLButtonElement>('.check-btn')!.click();
+    await stable();
+
+    expect(label(page)).toMatch(/^✓ me · \d{2}:\d{2}$/);
+  });
+
+  it('shows another member as the buyer, and just the time for old purchases', async () => {
+    const { store, page, stable } = await openList([], [
+      item('Сир', { boughtAt: Date.now(), boughtBy: 'oksana@example.com' }),
+      item('Хліб', { boughtAt: Date.now() }),
+    ]);
+    store.nicknames.set({ 'oksana@example.com': 'Оксана' });
+    await stable();
+
+    const labels = [...page.querySelectorAll('li.bought .item-bought-by')].map((l) => l.textContent!.replace(/\s+/g, ' ').trim());
+    expect(labels[0]).toMatch(/^✓ Оксана · \d{2}:\d{2}$/);
+    expect(labels[1]).toMatch(/^✓ \d{2}:\d{2}$/);
+  });
+
+  it('forgets the buyer when the item goes back to the list, one at a time and all at once', async () => {
+    const { list, row, button, stable } = await openList([], [
+      item('Сир', { boughtAt: 1, boughtBy: 'oksana@example.com' }),
+      item('Хліб', { boughtAt: 2, boughtBy: 'oksana@example.com' }),
+    ]);
+
+    row('Сир').querySelector<HTMLButtonElement>('.check-btn')!.click();
+    await stable();
+    expect('boughtBy' in list().toBuy[0]).toBe(false);
+
+    button('↩ Купити знову').click();
+    await stable();
+    expect(list().toBuy.every((x) => !('boughtBy' in x) && !('boughtAt' in x))).toBe(true);
+  });
+});
