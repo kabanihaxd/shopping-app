@@ -41,10 +41,11 @@ service cloud.firestore {
       allow delete: if isOwner();
     }
 
-    // Кто заходил на сайт. Видят все вошедшие (чтобы владелец мог выбрать, кому дать доступ),
-    // а записать можно только себя — под своим email.
+    // Кто заходил на сайт. Видит только админ (UID — внутренний номер аккаунта, не email;
+    // тот же номер записан в ADMIN_UID в src/app/firebase-config.ts).
+    // Записать можно только себя — под своим email.
     match /users/{email} {
-      allow read: if signedIn();
+      allow read: if signedIn() && request.auth.uid == 'IEZM3sFzcGQZd5ByRNPlHzamfjT2';
       allow write: if signedIn()
         && email == myEmail()
         && request.resource.data.email == myEmail();

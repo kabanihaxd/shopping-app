@@ -27,7 +27,7 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { firebaseConfig } from './firebase-config';
+import { ADMIN_UID, firebaseConfig } from './firebase-config';
 import { Item } from './item';
 
 export type ShoppingListData = {
@@ -163,7 +163,10 @@ export class ListsStore {
       );
       this.importLocalLists();
       this.rememberMe(user);
-      this.listenToUsers();
+      // Список посетителей видит только админ (база всё равно не отдаст его остальным)
+      if (user.uid === ADMIN_UID) {
+        this.listenToUsers();
+      }
     });
   }
 
