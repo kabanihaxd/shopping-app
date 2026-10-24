@@ -138,3 +138,14 @@ h2 small {
   font-size: 0.85rem;
   color: #666;
 }
+
+.user-info {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+h3 {
+  margin: 1rem 0 0.25rem;
+  font-size: 1rem;
+  color: #444;
+}

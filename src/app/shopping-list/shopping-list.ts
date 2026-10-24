@@ -1,5 +1,5 @@
 import { Component, computed, inject, input } from '@angular/core';
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { Item } from '../item';
@@ -18,7 +18,7 @@ function sumCost(list: Item[]): number {
 }
 
 @Component({
-  imports: [CurrencyPipe, DecimalPipe, RouterLink, ShoppingItem],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, RouterLink, ShoppingItem],
   selector: 'app-shopping-list',
   styleUrl: './shopping-list.css',
   templateUrl: './shopping-list.html',
@@ -40,7 +40,10 @@ export class ShoppingList {
 
   /** Курс евро из интернета: загружается сам при открытии страницы */
   protected readonly rates = httpResource<RatesResponse>(() => RATES_URL);
-  protected readonly uahRate = computed(() => this.rates.value()?.rates['UAH']);
+  // hasValue() — сначала спрашиваем «курс есть?»: value() при ошибке загрузки не возвращает пусто, а падает
+  protected readonly uahRate = computed(() =>
+    this.rates.hasValue() ? this.rates.value().rates['UAH'] : undefined,
+  );
 
   protected add(nameInput: HTMLInputElement, qtyInput: HTMLInputElement, priceInput: HTMLInputElement) {
     const name = nameInput.value.trim();
@@ -94,6 +97,16 @@ export class ShoppingList {
 
   /** Владелец списка может приглашать и убирать участников */
   protected readonly isOwner = computed(() => this.list()?.ownerEmail === this.store.email());
+
+  /** Кто заходил на сайт, но ещё не имеет доступа к этому списку */
+  protected readonly candidates = computed(() => {
+    const members = this.list()?.members ?? [];
+    return this.store.users().filter((u) => !members.includes(u.email));
+  });
+
+  protected grant(email: string) {
+    this.store.share(this.id(), email);
+  }
 
   protected invite(emailInput: HTMLInputElement) {
     const email = emailInput.value.trim();

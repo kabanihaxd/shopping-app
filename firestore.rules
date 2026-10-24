@@ -1,7 +1,7 @@
 rules_version = '2';
 
 // Правила доступа к базе. Их проверяет сервер Firebase — обойти их из браузера нельзя.
-// Скопируй этот файл в Firebase Console → Firestore Database → Rules → Publish.
+// Выгрузка: npx -y firebase-tools@15.34.1 deploy --only firestore:rules
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
@@ -39,6 +39,15 @@ service cloud.firestore {
 
       // Удалить список целиком может только владелец
       allow delete: if isOwner();
+    }
+
+    // Кто заходил на сайт. Видят все вошедшие (чтобы владелец мог выбрать, кому дать доступ),
+    // а записать можно только себя — под своим email.
+    match /users/{email} {
+      allow read: if signedIn();
+      allow write: if signedIn()
+        && email == myEmail()
+        && request.resource.data.email == myEmail();
     }
   }
 }

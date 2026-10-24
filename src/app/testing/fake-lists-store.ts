@@ -1,5 +1,5 @@
 import { Provider, computed, signal } from '@angular/core';
-import { ListsStore, ShoppingListData } from '../lists-store';
+import { AppUser, ListsStore, ShoppingListData } from '../lists-store';
 
 /** Хранилище для тестов: всё в памяти, без Firebase и интернета */
 export class FakeListsStore {
@@ -8,6 +8,7 @@ export class FakeListsStore {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly lists = signal<ShoppingListData[]>([]);
+  readonly users = signal<AppUser[]>([]);
 
   signIn() {}
   signOut() {}

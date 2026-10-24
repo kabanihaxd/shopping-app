@@ -116,6 +116,23 @@
       />
       <button class="add-btn" (click)="invite(inviteEmail)">Запросити</button>
     </div>
+    @if (candidates().length > 0) {
+      <h3>Хто заходив на сайт</h3>
+      <ul class="members">
+        @for (user of candidates(); track user.email) {
+          <li>
+            <span class="user-info">
+              @if (user.name) {
+                <strong>{{ user.name }}</strong>
+              }
+              {{ user.email }}
+              <small>— заходив {{ user.lastSeen | date: 'd.MM.yyyy HH:mm' }}</small>
+            </span>
+            <button class="add-btn" (click)="grant(user.email)">Дати доступ</button>
+          </li>
+        }
+      </ul>
+    }
     <p class="hint">Запрошена людина увійде на сайт через Google з цим email — і одразу побачить список.</p>
   }
   }

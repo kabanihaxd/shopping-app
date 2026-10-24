@@ -1,4 +1,5 @@
 {
+  "firestore": { "rules": "firestore.rules" },
   "hosting": {
     "public": "dist/shopping-app/browser",
     "ignore": ["firebase.json", "**/.*"],

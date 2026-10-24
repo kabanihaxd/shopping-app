@@ -42,6 +42,14 @@ export type ShoppingListData = {
   createdAt: number;
 };
 
+/** Человек, который хоть раз входил на сайт (коллекция users, id документа — email) */
+export type AppUser = {
+  email: string;
+  name: string;
+  /** Когда заходил последний раз (мс) */
+  lastSeen: number;
+};
+
 const STORAGE_KEY = 'shopping-lists';
 const IMPORTED_KEY = 'shopping-lists-imported';
 const OLD_STORAGE_KEY = 'shopping-list';
@@ -107,7 +115,9 @@ export class ListsStore {
     localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
   });
   private readonly listsRef = collection(this.db, 'lists');
+  private readonly usersRef = collection(this.db, 'users');
   private stopListening?: Unsubscribe;
+  private stopListeningUsers?: Unsubscribe;
 
   /** Кто вошёл (null — никто) */
   readonly user = signal<User | null>(null);
@@ -119,13 +129,18 @@ export class ListsStore {
   private readonly allLists = signal<ShoppingListData[]>([]);
   readonly lists = computed(() => [...this.allLists()].sort((a, b) => a.createdAt - b.createdAt));
 
+  /** Все, кто входил на сайт, — новые сверху. Им можно дать доступ к списку одним нажатием. */
+  readonly users = signal<AppUser[]>([]);
+
   constructor() {
     // Если вернулись со страницы входа Google с ошибкой — показать её
     getRedirectResult(this.auth).catch((e) => this.fail(e));
 
     onAuthStateChanged(this.auth, (user) => {
       this.stopListening?.();
+      this.stopListeningUsers?.();
       this.allLists.set([]);
+      this.users.set([]);
       this.user.set(user);
       if (!user) {
         this.loading.set(false);
@@ -147,6 +162,8 @@ export class ListsStore {
         },
       );
       this.importLocalLists();
+      this.rememberMe(user);
+      this.listenToUsers();
     });
   }
 
@@ -206,6 +223,29 @@ export class ListsStore {
 
   unshare(id: string, email: string) {
     updateDoc(doc(this.listsRef, id), { members: arrayRemove(email) }).catch((e) => this.fail(e));
+  }
+
+  /** Записывает меня в users (или обновляет время входа) — так владельцы списков увидят мой email */
+  private rememberMe(user: User) {
+    setDoc(doc(this.usersRef, this.email()), {
+      email: this.email(),
+      name: user.displayName ?? '',
+      lastSeen: Date.now(),
+    }).catch((e) => this.fail(e));
+  }
+
+  private listenToUsers() {
+    this.stopListeningUsers = onSnapshot(
+      this.usersRef,
+      (snapshot) => {
+        const users = snapshot.docs.map((d) => {
+          const data = d.data();
+          return { email: d.id, name: data['name'] ?? '', lastSeen: data['lastSeen'] ?? 0 };
+        });
+        this.users.set(users.sort((a, b) => b.lastSeen - a.lastSeen));
+      },
+      (err) => this.fail(err),
+    );
   }
 
   /** Один раз переносит старые списки из браузера в облако */
