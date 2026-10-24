@@ -28,7 +28,9 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { ADMIN_UID, firebaseConfig } from './firebase-config';
+import { Category, DEFAULT_CATEGORIES } from './category';
 import { Item } from './item';
+import { HistoryEntry, forgetItem, rememberItem } from './suggestions';
 
 export type ShoppingListData = {
   id: string;
@@ -37,6 +39,8 @@ export type ShoppingListData = {
   ownerEmail: string;
   /** Email всех, у кого есть доступ (включая владельца) */
   members: string[];
+  /** Категории товаров — общие для всех участников списка */
+  categories: Category[];
   toBuy: Item[];
   bought: Item[];
   createdAt: number;
@@ -54,11 +58,11 @@ const STORAGE_KEY = 'shopping-lists';
 const IMPORTED_KEY = 'shopping-lists-imported';
 const OLD_STORAGE_KEY = 'shopping-list';
 
-function loadItems(raw: unknown): Item[] {
+export function loadItems(raw: unknown): Item[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((x) => {
     if (typeof x === 'string') {
-      return { id: crypto.randomUUID(), name: x, quantity: 1, price: 0 };
+      return { id: crypto.randomUUID(), name: x, quantity: 1, price: 0, categoryId: '' };
     }
     const obj = x as Partial<Item>;
     return {
@@ -66,17 +70,19 @@ function loadItems(raw: unknown): Item[] {
       name: obj.name ?? '',
       quantity: obj.quantity ?? 1,
       price: obj.price ?? 0,
+      categoryId: obj.categoryId ?? '',
     };
   });
 }
 
 /** Документ из Firestore → наш тип (на случай, если каких-то полей нет) */
-function toList(id: string, data: DocumentData): ShoppingListData {
+export function toList(id: string, data: DocumentData): ShoppingListData {
   return {
     id,
     name: data['name'] ?? 'Без назви',
     ownerEmail: data['ownerEmail'] ?? '',
     members: data['members'] ?? [],
+    categories: Array.isArray(data['categories']) ? data['categories'] : DEFAULT_CATEGORIES,
     toBuy: loadItems(data['toBuy']),
     bought: loadItems(data['bought']),
     createdAt: data['createdAt'] ?? 0,
@@ -116,8 +122,10 @@ export class ListsStore {
   });
   private readonly listsRef = collection(this.db, 'lists');
   private readonly usersRef = collection(this.db, 'users');
+  private readonly historiesRef = collection(this.db, 'histories');
   private stopListening?: Unsubscribe;
   private stopListeningUsers?: Unsubscribe;
+  private stopListeningHistory?: Unsubscribe;
 
   /** Кто вошёл (null — никто) */
   readonly user = signal<User | null>(null);
@@ -132,6 +140,9 @@ export class ListsStore {
   /** Все, кто входил на сайт, — новые сверху. Им можно дать доступ к списку одним нажатием. */
   readonly users = signal<AppUser[]>([]);
 
+  /** Что я раньше добавлял — для подсказок при вводе. Личное: другие люди её не видят. */
+  readonly history = signal<HistoryEntry[]>([]);
+
   constructor() {
     // Если вернулись со страницы входа Google с ошибкой — показать её
     getRedirectResult(this.auth).catch((e) => this.fail(e));
@@ -139,8 +150,10 @@ export class ListsStore {
     onAuthStateChanged(this.auth, (user) => {
       this.stopListening?.();
       this.stopListeningUsers?.();
+      this.stopListeningHistory?.();
       this.allLists.set([]);
       this.users.set([]);
+      this.history.set([]);
       this.user.set(user);
       if (!user) {
         this.loading.set(false);
@@ -167,6 +180,7 @@ export class ListsStore {
       if (user.uid === ADMIN_UID) {
         this.listenToUsers();
       }
+      this.listenToHistory();
     });
   }
 
@@ -194,6 +208,7 @@ export class ListsStore {
       name,
       ownerEmail: this.email(),
       members: [this.email()],
+      categories: DEFAULT_CATEGORIES,
       toBuy: [],
       bought: [],
       createdAt: Date.now(),
@@ -214,8 +229,8 @@ export class ListsStore {
   update(id: string, change: (list: ShoppingListData) => ShoppingListData) {
     const list = this.lists().find((l) => l.id === id);
     if (!list) return;
-    const { name, toBuy, bought } = change(list);
-    updateDoc(doc(this.listsRef, id), { name, toBuy, bought }).catch((e) => this.fail(e));
+    const { name, categories, toBuy, bought } = change(list);
+    updateDoc(doc(this.listsRef, id), { name, categories, toBuy, bought }).catch((e) => this.fail(e));
   }
 
   share(id: string, email: string) {
@@ -226,6 +241,32 @@ export class ListsStore {
 
   unshare(id: string, email: string) {
     updateDoc(doc(this.listsRef, id), { members: arrayRemove(email) }).catch((e) => this.fail(e));
+  }
+
+  /** Запомнить добавленный товар для подсказок */
+  remember(item: Item) {
+    this.saveHistory(rememberItem(this.history(), item));
+  }
+
+  /** Убрать товар из подсказок */
+  forget(name: string) {
+    this.saveHistory(forgetItem(this.history(), name));
+  }
+
+  private saveHistory(entries: HistoryEntry[]) {
+    this.history.set(entries); // сразу, не дожидаясь ответа сервера
+    setDoc(doc(this.historiesRef, this.email()), { entries }).catch((e) => this.fail(e));
+  }
+
+  private listenToHistory() {
+    this.stopListeningHistory = onSnapshot(
+      doc(this.historiesRef, this.email()),
+      (snapshot) => {
+        const entries = snapshot.data()?.['entries'];
+        this.history.set(Array.isArray(entries) ? entries : []);
+      },
+      (err) => this.fail(err),
+    );
   }
 
   /** Записывает меня в users (или обновляет время входа) — так владельцы списков увидят мой email */
@@ -259,6 +300,7 @@ export class ListsStore {
     local.forEach((l, i) => {
       batch.set(doc(this.listsRef), {
         ...l,
+        categories: DEFAULT_CATEGORIES,
         ownerEmail: this.email(),
         members: [this.email()],
         createdAt: Date.now() + i,

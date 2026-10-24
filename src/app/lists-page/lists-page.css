@@ -64,6 +64,7 @@ li:hover {
 .list-link {
   flex: 1;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.75rem;
@@ -98,4 +99,35 @@ li:hover {
 
 .remove-btn:hover {
   color: #c62828;
+}
+
+.rename-btn {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: #999;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.rename-btn:hover {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.rename-input {
+  flex: 1;
+  min-width: 0;
+  margin: 0.35rem 0 0.35rem 0.35rem;
+  padding: 0.45rem;
+  border: 1px solid #2e7d32;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.progress {
+  flex-basis: 100%;
 }

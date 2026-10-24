@@ -73,7 +73,8 @@
   cursor: default;
 }
 
-.edit-form input {
+.edit-form input,
+.edit-form select {
   padding: 0.4rem;
   border: 1px solid #ccc;
   border-radius: 6px;
@@ -90,6 +91,15 @@
 
 .num-input {
   width: 90px;
+}
+
+.cat-select {
+  flex: 1 1 140px;
+  background: white;
+}
+
+.item-icon {
+  margin-right: 0.15rem;
 }
 
 .save-btn {
@@ -132,4 +142,20 @@
 .remove-btn:hover {
   background: #ffcdd2;
   color: #c62828;
+}
+
+.drag-handle {
+  flex-shrink: 0;
+  margin: -0.5rem 0 -0.5rem -0.5rem;
+  padding: 0.5rem 0.25rem 0.5rem 0.5rem; /* большая зона, чтобы легко попасть пальцем */
+  color: #bbb;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.drag-handle:hover {
+  color: #2e7d32;
 }

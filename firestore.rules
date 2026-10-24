@@ -41,6 +41,11 @@ service cloud.firestore {
       allow delete: if isOwner();
     }
 
+    // Личная история добавленных товаров (для подсказок при вводе) — только своя
+    match /histories/{email} {
+      allow read, write: if signedIn() && email == myEmail();
+    }
+
     // Кто заходил на сайт. Видит только админ (UID — внутренний номер аккаунта, не email;
     // тот же номер записан в ADMIN_UID в src/app/firebase-config.ts).
     // Записать можно только себя — под своим email.

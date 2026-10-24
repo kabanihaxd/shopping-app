@@ -149,3 +149,149 @@ h3 {
   font-size: 1rem;
   color: #444;
 }
+
+.add-row select,
+.cat-select {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+  background: white;
+}
+
+.add-row .cat-select {
+  flex: 1 1 160px;
+}
+
+.group-title {
+  margin: 0.75rem 0 0;
+  font-size: 0.95rem;
+  color: #2e7d32;
+}
+
+.group-title + ul {
+  margin-top: 0.25rem;
+}
+
+.categories {
+  margin: 1.5rem 0 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+
+.categories summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.25rem 0;
+}
+
+.categories[open] summary {
+  margin-bottom: 0.5rem;
+}
+
+/* Поле названия + выпадающие подсказки под ним */
+.name-wrap {
+  position: relative;
+  flex: 1 1 100%;
+  display: flex;
+}
+
+.name-wrap .name-input {
+  flex: 1;
+}
+
+.suggestions {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 0;
+  padding: 0.25rem 0;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.suggestions li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
+.suggestions li:hover,
+.suggestions li.active {
+  background: #e8f5e9;
+}
+
+.s-name {
+  flex: 1;
+}
+
+.suggestions small {
+  color: #666;
+}
+
+.s-forget {
+  border: 0;
+  background: transparent;
+  color: #aaa;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.s-forget:hover {
+  background: #ffcdd2;
+  color: #c62828;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.rename-btn {
+  border: 0;
+  background: transparent;
+  color: #999;
+  font-size: 1.1rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.rename-btn:hover {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+/* Поле того же размера, что и заголовок, — чтобы страница не «прыгала» */
+.rename-input {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 0 0.67em;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid #2e7d32;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 2em;
+  font-weight: bold;
+}
+
+/* Пустое место, куда можно уронить товар, — чтобы группа не схлопывалась во время перетаскивания */
+.drop-list {
+  min-height: 2.5rem;
+}
+
+/* Остальные товары плавно раздвигаются, освобождая место */
+.drop-list.cdk-drop-list-dragging li:not(.cdk-drag-placeholder) {
+  transition: transform 200ms ease;
+}

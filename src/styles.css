@@ -1,1 +1,26 @@
 /* You can add global styles to this file, and also import other style files */
+
+/* Перетаскивание товаров (@angular/cdk/drag-drop) */
+.cdk-drag-preview {
+  box-sizing: border-box;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  font-family: system-ui, sans-serif;
+  list-style: none;
+}
+
+/* Место, куда упадёт товар */
+.cdk-drag-placeholder {
+  opacity: 0.35;
+  background: #e8f5e9;
+}
+
+.cdk-drag-animating {
+  transition: transform 200ms ease;
+}
+
+body.cdk-drag-dragging,
+body.cdk-drag-dragging * {
+  cursor: grabbing !important;
+}

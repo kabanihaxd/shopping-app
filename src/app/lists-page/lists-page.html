@@ -19,6 +19,19 @@
   <ul>
     @for (list of store.lists(); track list.id) {
       <li>
+        @if (renamingId() === list.id) {
+          <input
+            #listName
+            class="rename-input"
+            type="text"
+            maxlength="60"
+            aria-label="Назва списку"
+            [value]="list.name"
+            (keydown.enter)="saveName(list, listName)"
+            (keydown.escape)="renamingId.set(null)"
+            (blur)="saveName(list, listName)"
+          />
+        } @else {
         <a class="list-link" [routerLink]="['/list', list.id]">
           <span class="list-name">
             {{ list.name }}
@@ -27,7 +40,10 @@
             }
           </span>
           <span class="list-meta">залишилось {{ list.toBuy.length }} з {{ list.toBuy.length + list.bought.length }}</span>
+          <app-progress-bar class="progress" [done]="list.bought.length" [total]="list.toBuy.length + list.bought.length" />
         </a>
+        <button class="rename-btn" (click)="renamingId.set(list.id)" title="Перейменувати" aria-label="Перейменувати список">✎</button>
+        }
         <button
           class="remove-btn"
           (click)="delete(list)"

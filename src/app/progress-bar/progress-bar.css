@@ -1,0 +1,20 @@
+:host {
+  display: block;
+}
+
+.track {
+  height: 6px;
+  background: #e0e0e0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  background: #66bb6a;
+  transition: width 0.3s;
+}
+
+.fill.complete {
+  background: #2e7d32;
+}

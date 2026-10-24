@@ -1,9 +1,10 @@
-import { Component, inject } from '@angular/core';
+import { Component, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { ListsStore, ShoppingListData } from '../lists-store';
+import { ProgressBar } from '../progress-bar/progress-bar';
 
 @Component({
-  imports: [RouterLink],
+  imports: [RouterLink, ProgressBar],
   selector: 'app-lists-page',
   styleUrl: './lists-page.css',
   templateUrl: './lists-page.html',
@@ -11,6 +12,27 @@ import { ListsStore, ShoppingListData } from '../lists-store';
 export class ListsPage {
   private readonly router = inject(Router);
   protected readonly store = inject(ListsStore);
+
+  /** id списка, который сейчас переименовываем (null — никакой) */
+  protected readonly renamingId = signal<string | null>(null);
+  private readonly nameField = viewChild<ElementRef<HTMLInputElement>>('listName');
+
+  constructor() {
+    effect(() => {
+      const field = this.nameField()?.nativeElement;
+      field?.focus();
+      field?.select();
+    });
+  }
+
+  protected saveName(list: ShoppingListData, nameInput: HTMLInputElement) {
+    if (this.renamingId() !== list.id) return; // отменили по Esc
+    this.renamingId.set(null);
+    const name = nameInput.value.trim();
+    if (name && name !== list.name) {
+      this.store.update(list.id, (l) => ({ ...l, name }));
+    }
+  }
 
   protected create(input: HTMLInputElement) {
     const name = input.value.trim();

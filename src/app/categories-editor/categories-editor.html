@@ -1,0 +1,60 @@
+<ul class="cat-list">
+  @for (cat of categories(); track cat.id; let i = $index, first = $first, last = $last) {
+    <li>
+      <div class="cat-row">
+        <button
+          type="button"
+          class="icon-btn"
+          [class.open]="picking() === cat.id"
+          (click)="togglePicker(cat.id)"
+          aria-label="Змінити іконку"
+        >{{ cat.icon }}</button>
+        <input
+          #name
+          class="cat-name"
+          type="text"
+          [value]="cat.name"
+          (change)="rename(cat, name)"
+          (keydown.enter)="name.blur()"
+          aria-label="Назва категорії"
+        />
+        <button type="button" class="small-btn" [disabled]="first" (click)="move(i, -1)" aria-label="Вище">↑</button>
+        <button type="button" class="small-btn" [disabled]="last" (click)="move(i, 1)" aria-label="Нижче">↓</button>
+        <button type="button" class="small-btn danger" (click)="remove(cat)" aria-label="Видалити">×</button>
+      </div>
+      @if (picking() === cat.id) {
+        <div class="icon-grid">
+          @for (icon of icons; track icon) {
+            <button type="button" [class.selected]="icon === cat.icon" (click)="setIcon(cat.id, icon)">{{ icon }}</button>
+          }
+        </div>
+      }
+    </li>
+  }
+</ul>
+
+<div class="cat-row">
+  <button
+    type="button"
+    class="icon-btn"
+    [class.open]="picking() === 'new'"
+    (click)="togglePicker('new')"
+    aria-label="Вибрати іконку"
+  >{{ newIcon() }}</button>
+  <input
+    #newName
+    class="cat-name"
+    type="text"
+    placeholder="Нова категорія"
+    (keydown.enter)="add(newName)"
+  />
+  <button type="button" class="add-btn" (click)="add(newName)">Додати</button>
+</div>
+@if (picking() === 'new') {
+  <div class="icon-grid">
+    @for (icon of icons; track icon) {
+      <button type="button" [class.selected]="icon === newIcon()" (click)="setIcon('new', icon)">{{ icon }}</button>
+    }
+  </div>
+}
+<p class="hint">Натисни на іконку, щоб вибрати іншу.</p>

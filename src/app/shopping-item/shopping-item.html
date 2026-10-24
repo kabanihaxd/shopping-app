@@ -9,6 +9,12 @@
     <input class="name-input" type="text" formControlName="name" placeholder="Назва" />
     <input class="num-input" type="number" min="1" formControlName="quantity" aria-label="Кількість" />
     <input class="num-input" type="number" min="0" step="0.01" formControlName="price" aria-label="Ціна, €" />
+    <select class="cat-select" formControlName="categoryId" aria-label="Категорія">
+      <option value="">Без категорії</option>
+      @for (cat of categories(); track cat.id) {
+        <option [value]="cat.id">{{ cat.icon }} {{ cat.name }}</option>
+      }
+    </select>
     <button class="save-btn" type="submit">Зберегти</button>
     <button class="cancel-btn" type="button" (click)="cancel()">Скасувати</button>
 
@@ -22,6 +28,10 @@
   </form>
 } @else {
   <span class="item-left">
+    @if (showHandle()) {
+      <!-- cdkDragHandle: тянуть товар можно только за эту ручку, иначе на телефоне не прокрутить список -->
+      <span class="drag-handle" cdkDragHandle title="Перетягніть, щоб змінити порядок" aria-hidden="true">⠿</span>
+    }
     <button
       class="check-btn"
       type="button"
@@ -29,7 +39,12 @@
       [attr.aria-label]="bought() ? 'Повернути до списку' : 'Позначити купленим'"
     >{{ bought() ? '✓' : '' }}</button>
     <span class="item-main">
-      <span class="item-name">{{ item().name }}</span>
+      <span class="item-name">
+        @if (category(); as cat) {
+          <span class="item-icon" [title]="cat.name">{{ cat.icon }}</span>
+        }
+        {{ item().name }}
+      </span>
       <span class="item-meta">
         {{ item().quantity }} шт
         @if (item().price > 0) {

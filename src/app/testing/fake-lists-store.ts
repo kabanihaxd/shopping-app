@@ -1,5 +1,8 @@
 import { Provider, computed, signal } from '@angular/core';
+import { DEFAULT_CATEGORIES } from '../category';
 import { AppUser, ListsStore, ShoppingListData } from '../lists-store';
+import { Item } from '../item';
+import { HistoryEntry, forgetItem, rememberItem } from '../suggestions';
 
 /** Хранилище для тестов: всё в памяти, без Firebase и интернета */
 export class FakeListsStore {
@@ -9,9 +12,18 @@ export class FakeListsStore {
   readonly error = signal<string | null>(null);
   readonly lists = signal<ShoppingListData[]>([]);
   readonly users = signal<AppUser[]>([]);
+  readonly history = signal<HistoryEntry[]>([]);
 
   signIn() {}
   signOut() {}
+
+  remember(item: Item) {
+    this.history.update((h) => rememberItem(h, item));
+  }
+
+  forget(name: string) {
+    this.history.update((h) => forgetItem(h, name));
+  }
 
   find(id: () => string | undefined) {
     return computed(() => this.lists().find((l) => l.id === id()));
@@ -22,7 +34,7 @@ export class FakeListsStore {
     const email = this.email();
     this.lists.update((all) => [
       ...all,
-      { id, name, ownerEmail: email, members: [email], toBuy: [], bought: [], createdAt: Date.now() },
+      { id, name, ownerEmail: email, members: [email], categories: DEFAULT_CATEGORIES, toBuy: [], bought: [], createdAt: Date.now() },
     ]);
     return id;
   }
@@ -36,7 +48,8 @@ export class FakeListsStore {
   }
 
   share(id: string, email: string) {
-    this.update(id, (l) => ({ ...l, members: [...l.members, email] }));
+    // Как настоящее хранилище: email без пробелов и маленькими буквами
+    this.update(id, (l) => ({ ...l, members: [...l.members, email.trim().toLowerCase()] }));
   }
 
   unshare(id: string, email: string) {

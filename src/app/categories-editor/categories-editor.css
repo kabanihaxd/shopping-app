@@ -1,0 +1,119 @@
+:host {
+  display: block;
+}
+
+.cat-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.75rem;
+}
+
+.cat-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0;
+}
+
+.icon-btn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  font-size: 1.4rem;
+  line-height: 1;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+}
+
+.icon-btn:hover,
+.icon-btn.open {
+  border-color: #2e7d32;
+  background: #e8f5e9;
+}
+
+.cat-name {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.small-btn {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #777;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.small-btn:hover:not(:disabled) {
+  background: #f0f0f0;
+}
+
+.small-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.small-btn.danger:hover {
+  background: #ffcdd2;
+  color: #c62828;
+}
+
+/* Сетка иконок: подстраивается под ширину экрана */
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 0.25rem;
+  margin: 0.25rem 0 0.75rem;
+  padding: 0.5rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.icon-grid button {
+  height: 40px;
+  font-size: 1.4rem;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.icon-grid button:hover {
+  background: #e8f5e9;
+}
+
+.icon-grid button.selected {
+  border-color: #2e7d32;
+  background: #e8f5e9;
+}
+
+.add-btn {
+  flex-shrink: 0;
+  background: #2e7d32;
+  color: white;
+  border: 0;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.add-btn:hover {
+  background: #1b5e20;
+}
+
+.hint {
+  color: #999;
+  font-size: 0.85rem;
+}

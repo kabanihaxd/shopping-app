@@ -1,0 +1,10 @@
+<div
+  class="track"
+  role="progressbar"
+  aria-label="Куплено"
+  aria-valuemin="0"
+  aria-valuemax="100"
+  [attr.aria-valuenow]="percent()"
+>
+  <div class="fill" [class.complete]="percent() === 100" [style.width.%]="percent()"></div>
+</div>

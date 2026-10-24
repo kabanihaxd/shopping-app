@@ -4,7 +4,24 @@
   @if (!list()) {
     <h1>Список не знайдено</h1>
   } @else {
-  <h1>{{ list()!.name }}</h1>
+  @if (renaming()) {
+    <input
+      #listName
+      class="rename-input"
+      type="text"
+      maxlength="60"
+      aria-label="Назва списку"
+      [value]="list()!.name"
+      (keydown.enter)="saveName(listName)"
+      (keydown.escape)="renaming.set(false)"
+      (blur)="saveName(listName)"
+    />
+  } @else {
+    <h1 class="title">
+      {{ list()!.name }}
+      <button class="rename-btn" (click)="renaming.set(true)" title="Перейменувати" aria-label="Перейменувати список">✎</button>
+    </h1>
+  }
 
   @if (total() > 0) {
     <p class="counter">
@@ -16,6 +33,7 @@
         }
       }
     </p>
+    <app-progress-bar [done]="total() - remaining()" [total]="total()" />
   }
 
   <p class="rate">
@@ -30,20 +48,58 @@
   </p>
 
   <div class="add-row">
-    <input
-      #newItem
-      class="name-input"
-      type="text"
-      placeholder="Що купити?"
-      (keydown.enter)="add(newItem, newQty, newPrice)"
-    />
+    <div class="name-wrap">
+      <input
+        #newItem
+        class="name-input"
+        type="text"
+        placeholder="Що купити?"
+        autocomplete="off"
+        role="combobox"
+        aria-autocomplete="list"
+        [attr.aria-expanded]="suggestionsOpen() && suggestions().length > 0"
+        (input)="onNameInput(newItem)"
+        (focus)="suggestionsOpen.set(true)"
+        (blur)="suggestionsOpen.set(false)"
+        (keydown)="onNameKeydown($event, newItem, newQty, newPrice, newCat)"
+      />
+      @if (suggestionsOpen() && suggestions().length > 0) {
+        <!-- mousedown + preventDefault: поле не теряет фокус, и подсказка не исчезает раньше клика -->
+        <ul class="suggestions" role="listbox">
+          @for (s of suggestions(); track s.name; let i = $index) {
+            <li
+              role="option"
+              [class.active]="i === activeSuggestion()"
+              [attr.aria-selected]="i === activeSuggestion()"
+              (mousedown)="$event.preventDefault()"
+              (click)="pick(s, newItem, newPrice, newCat)"
+            >
+              <span class="s-icon">{{ categoryOf(s)?.icon ?? '🛒' }}</span>
+              <span class="s-name">{{ s.name }}</span>
+              @if (s.price > 0) {
+                <small>{{ s.price | currency: 'EUR' }}</small>
+              }
+              @if (s.count > 0) {
+                <button
+                  type="button"
+                  class="s-forget"
+                  title="Більше не підказувати"
+                  aria-label="Більше не підказувати"
+                  (click)="$event.stopPropagation(); forget(s)"
+                >×</button>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </div>
     <input
       #newQty
       class="num-input"
       type="number"
       min="1"
       placeholder="К-сть"
-      (keydown.enter)="add(newItem, newQty, newPrice)"
+      (keydown.enter)="add(newItem, newQty, newPrice, newCat)"
     />
     <input
       #newPrice
@@ -52,17 +108,39 @@
       min="0"
       step="0.01"
       placeholder="Ціна, €"
-      (keydown.enter)="add(newItem, newQty, newPrice)"
+      (keydown.enter)="add(newItem, newQty, newPrice, newCat)"
     />
-    <button class="add-btn" (click)="add(newItem, newQty, newPrice)">Додати</button>
+    <select #newCat class="cat-select" aria-label="Категорія">
+      <option value="">Без категорії</option>
+      @for (cat of categories(); track cat.id) {
+        <option [value]="cat.id">{{ cat.icon }} {{ cat.name }}</option>
+      }
+    </select>
+    <button class="add-btn" (click)="add(newItem, newQty, newPrice, newCat)">Додати</button>
   </div>
 
   <h2>Треба купити</h2>
-  <ul>
-    @for (item of toBuy(); track item.id) {
-      <li app-shopping-item [item]="item" (toggle)="buy(item)" (remove)="remove(item)" (save)="updateItem($event)"></li>
-    }
-  </ul>
+  <!-- cdkDropListGroup: товары можно перетаскивать между всеми группами внутри него -->
+  <div cdkDropListGroup>
+  @for (group of groups(); track group.id) {
+    <h3 class="group-title">{{ group.title }}</h3>
+    <ul class="drop-list" cdkDropList [cdkDropListData]="group" (cdkDropListDropped)="drop($event)">
+      @for (item of group.items; track item.id) {
+        <li
+          app-shopping-item
+          cdkDrag
+          cdkDragLockAxis="y"
+          [showHandle]="true"
+          [item]="item"
+          [categories]="categories()"
+          (toggle)="buy(item)"
+          (remove)="remove(item)"
+          (save)="updateItem($event)"
+        ></li>
+      }
+    </ul>
+  }
+  </div>
 
   <div class="section-header">
     <h2>Вже куплено</h2>
@@ -85,12 +163,18 @@
         class="bought"
         [item]="item"
         [bought]="true"
+        [categories]="categories()"
         (toggle)="returnItem(item)"
         (remove)="remove(item)"
         (save)="updateItem($event)"
       ></li>
     }
   </ul>
+
+  <details class="categories">
+    <summary>Категорії ({{ categories().length }})</summary>
+    <app-categories-editor [categories]="categories()" (update)="setCategories($event)" />
+  </details>
 
   <h2>Доступ</h2>
   <ul class="members">
