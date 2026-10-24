@@ -171,3 +171,14 @@
 .pin-btn:hover {
   background: var(--warn-soft);
 }
+
+.item-note {
+  font-size: var(--meta-font, 0.85rem);
+  font-style: italic;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.note-input {
+  flex: 1 1 100%;
+}

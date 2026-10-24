@@ -2,6 +2,13 @@ import { listToText } from './list-text';
 
 const item = (name: string, quantity = 1, price = 0) => ({ id: name, name, quantity, price, categoryId: '' });
 
+describe('listToText with notes', () => {
+  it('puts the note in brackets after the item', () => {
+    const milk = { ...item('Молоко', 2, 1.5), note: 'без лактози' };
+    expect(listToText('Тиждень', [{ title: 'Без категорії', items: [milk] }])).toContain('• Молоко × 2 — 3.00 € (без лактози)');
+  });
+});
+
 describe('listToText', () => {
   it('puts the name first, then items grouped by category', () => {
     const text = listToText('Тиждень', [

@@ -1,4 +1,4 @@
-import { Component, ElementRef, computed, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, computed, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import {
   CdkDrag,
@@ -21,10 +21,48 @@ import { purchasesOf } from '../purchase';
 import { ProgressBar } from '../progress-bar/progress-bar';
 import { ShoppingItem } from '../shopping-item/shopping-item';
 import { HistoryEntry, suggest } from '../suggestions';
+import { VoiceEngine } from '../voice-engine';
+import { parseSpoken } from '../voice-parse';
 import { ScreenWakeLock } from '../wake-lock';
 
 /** Ключ в localStorage: включён ли режим «У магазині» (личная настройка устройства) */
 const STORE_MODE_KEY = 'store-mode';
+/** Язык распознавания речи (личная настройка устройства) */
+const VOICE_LANG_KEY = 'voice-lang';
+type VoiceLang = 'uk-UA' | 'ru-RU';
+/** Сколько секунд после голосового добавления можно нажать «Скасувати» */
+const VOICE_UNDO_MS = 8000;
+
+/** Что сказать человеку, если распознавание речи не сработало */
+function voiceProblem(code: string): string {
+  switch (code) {
+    case 'not-allowed':
+    case 'service-not-allowed':
+      return 'Немає доступу до мікрофона. Дозвольте його в налаштуваннях браузера для цього сайту.';
+    case 'audio-capture':
+      return 'Мікрофон не знайдено. Підключіть його і виберіть у налаштуваннях системи «мікрофон за замовчуванням».';
+    case 'mic-busy':
+      return 'Мікрофон зайнятий іншою програмою. Закрийте її і спробуйте ще раз.';
+    case 'network':
+      return 'Розпізнавання мовлення потребує інтернету.';
+    case 'language-not-supported':
+      return 'Цю мову браузер не розпізнає. Спробуйте іншу (кнопка UA/RU).';
+    case 'no-speech':
+      return 'Нічого не почув. Спробуйте ще раз.';
+    case 'aborted':
+      return '';
+    default:
+      return `Не вдалося розпізнати мовлення (код: ${code}).`;
+  }
+}
+
+function readVoiceLang(): VoiceLang {
+  try {
+    return localStorage.getItem(VOICE_LANG_KEY) === 'ru-RU' ? 'ru-RU' : 'uk-UA';
+  } catch {
+    return 'uk-UA';
+  }
+}
 
 function readStoreMode(): boolean {
   try {
@@ -96,6 +134,8 @@ export class ShoppingList {
   private readonly store = inject(ListsStore);
   private readonly products = inject(ProductLookup);
   protected readonly wakeLock = inject(ScreenWakeLock);
+  protected readonly voice = inject(VoiceEngine);
+  private readonly destroyRef = inject(DestroyRef);
 
   /** Берётся из адреса /list/:id (withComponentInputBinding в app.config.ts) */
   readonly id = input.required<string>();
@@ -120,6 +160,16 @@ export class ShoppingList {
   }
 
   constructor() {
+    // Ушли со страницы посреди записи — микрофон выключаем
+    this.destroyRef.onDestroy(() => this.stopVoice?.());
+
+    // Поле бюджета появилось на странице — ставим в него курсор
+    effect(() => {
+      const field = this.budgetField()?.nativeElement;
+      field?.focus();
+      field?.select();
+    });
+
     // Пока режим включён и список открыт — экран не гаснет. Уходим со страницы — блокировка снимается.
     effect((onCleanup) => {
       if (!this.storeMode()) return;
@@ -140,6 +190,18 @@ export class ShoppingList {
   protected readonly scanMessage = signal<string | null>(null);
   private readonly newItemField = viewChild<ElementRef<HTMLInputElement>>('newItem');
 
+  /** Голосовой ввод: идёт запись, что уже услышано, что сказать человеку (ошибка / «не разобрал») */
+  protected readonly voiceListening = signal(false);
+  protected readonly voiceInterim = signal('');
+  protected readonly voiceMessage = signal<string | null>(null);
+  protected readonly voiceLang = signal<VoiceLang>(readVoiceLang());
+  private stopVoice?: () => void;
+
+  /** Бюджет списка (0 — не задан) и сколько уже запланировано/куплено в нём */
+  protected readonly budget = computed(() => this.list()?.budget ?? 0);
+  protected readonly editingBudget = signal(false);
+  private readonly budgetField = viewChild<ElementRef<HTMLInputElement>>('budgetField');
+
   protected readonly toBuy = computed(() => this.list()?.toBuy ?? []);
   protected readonly bought = computed(() => this.list()?.bought ?? []);
   /** «Вже куплено» в том порядке, в каком показываем */
@@ -159,6 +221,15 @@ export class ShoppingList {
     groups.push({ id: '', title: 'Без категорії', items: arrangeByPrice(items.filter((x) => !known.has(x.categoryId))) });
     return groups.filter((g) => g.items.length > 0);
   });
+
+  /** Всё, что в списке (и купленное, и нет): именно это сравниваем с бюджетом — превышение видно ещё до покупки */
+  protected readonly listCost = computed(() => sumCost(this.toBuy()) + sumCost(this.bought()));
+  protected readonly budgetLeft = computed(() => this.budget() - this.listCost());
+  /** Копейки из-за дробей не должны давать ложное «перевищено» */
+  protected readonly overBudget = computed(() => this.budget() > 0 && this.listCost() > this.budget() + 0.005);
+  protected readonly budgetPercent = computed(() =>
+    this.budget() > 0 ? Math.min(100, (this.listCost() / this.budget()) * 100) : 0,
+  );
 
   protected readonly remaining = computed(() => this.toBuy().length);
   protected readonly total = computed(() => this.toBuy().length + this.bought().length);
@@ -224,6 +295,86 @@ export class ShoppingList {
     } catch {
       this.scanMessage.set('Не вдалося звернутися до бази товарів. Перевірте інтернет.');
     }
+  }
+
+  protected toggleVoiceLang() {
+    this.voiceLang.update((l) => (l === 'uk-UA' ? 'ru-RU' : 'uk-UA'));
+    try {
+      localStorage.setItem(VOICE_LANG_KEY, this.voiceLang());
+    } catch {
+      // не запомнится — после перезагрузки снова украинский
+    }
+  }
+
+  /** Микрофон: нажали — слушаем, нажали ещё раз — хватит (то, что успели сказать, добавится) */
+  protected toggleVoice() {
+    if (this.voiceListening()) {
+      this.stopVoice?.();
+      return;
+    }
+    this.voiceMessage.set(null);
+    this.voiceInterim.set('');
+    this.voiceListening.set(true);
+    let finalText = '';
+    let lastInterim = '';
+    this.stopVoice = this.voice.start(this.voiceLang(), {
+      onInterim: (text) => {
+        lastInterim = text;
+        this.voiceInterim.set(text);
+      },
+      onFinal: (text) => (finalText += ' ' + text),
+      onError: (code) => this.voiceMessage.set(voiceProblem(code)),
+      onEnd: () => {
+        this.voiceListening.set(false);
+        this.voiceInterim.set('');
+        this.stopVoice = undefined;
+        const text = (finalText || lastInterim).trim();
+        // Ошибка уже объяснена — а если ошибки не было и текста нет, значит ничего не расслышали
+        if (text) this.addSpoken(text);
+        else if (!this.voiceMessage()) this.voiceMessage.set('Нічого не почув. Спробуйте ще раз.');
+      },
+    });
+  }
+
+  /** «молоко, два хліби, яйця» → три товара в «Треба купити» разом, с отменой на плашке */
+  private addSpoken(text: string) {
+    const parsed = parseSpoken(text);
+    if (parsed.length === 0) {
+      this.voiceMessage.set(`Не вдалося розібрати, що купити: «${text}». Спробуйте ще раз.`);
+      return;
+    }
+    // Что уже знаем (история и другие списки) — подставляем цену и категорию, как в подсказках
+    const known = new Map(this.knownItems().map((e) => [e.name.trim().toLowerCase(), e]));
+    const categories = this.categories();
+    const items: Item[] = parsed.map((p) => {
+      const entry = known.get(p.name.toLowerCase());
+      const categoryId = categories.some((c) => c.id === entry?.categoryId) ? entry!.categoryId : '';
+      return { id: crypto.randomUUID(), name: p.name, quantity: p.quantity, price: entry?.price ?? 0, categoryId };
+    });
+    const listId = this.id();
+    const ids = new Set(items.map((x) => x.id));
+
+    this.store.update(listId, (l) => ({ ...l, toBuy: [...l.toBuy, ...items] }));
+    items.forEach((item) => this.store.remember(item));
+    this.voiceMessage.set(null);
+
+    const shown = items.slice(0, 3).map((x) => (x.quantity > 1 ? `${x.quantity}× ${x.name}` : x.name)).join(', ');
+    this.store.showNotice(
+      {
+        listId,
+        text: `Додано голосом (${items.length}): ${shown}${items.length > 3 ? ` і ще ${items.length - 3}` : ''}`,
+        action: {
+          label: 'Скасувати',
+          run: () => this.store.update(listId, (l) => ({ ...l, toBuy: l.toBuy.filter((x) => !ids.has(x.id)) })),
+        },
+      },
+      VOICE_UNDO_MS,
+    );
+  }
+
+  /** Для шаблона: модуль числа */
+  protected abs(value: number): number {
+    return Math.abs(value);
   }
 
   protected categoryOf(entry: HistoryEntry) {
@@ -404,6 +555,20 @@ export class ShoppingList {
       toBuy: replace(l.toBuy),
       bought: replace(l.bought),
     }));
+  }
+
+  /**
+   * Enter или клик мимо поля сохраняет бюджет; пусто или 0 — убирает его; Esc отменяет (сюда тогда уже не доходит).
+   * Запятая и точка — обе годятся. Непонятный текст или минус не стирают прежний бюджет — просто игнорируются.
+   */
+  protected saveBudget(field: HTMLInputElement) {
+    if (!this.editingBudget()) return;
+    this.editingBudget.set(false);
+    const text = field.value.trim().replace(',', '.');
+    const value = text === '' ? 0 : Math.round(Number(text) * 100) / 100;
+    if (!Number.isFinite(value) || value < 0) return;
+    const amount = value > 0 ? Math.min(value, 10_000_000) : null;
+    if ((amount ?? 0) !== this.budget()) this.store.setBudget(this.id(), amount);
   }
 
   protected saveName(nameInput: HTMLInputElement) {

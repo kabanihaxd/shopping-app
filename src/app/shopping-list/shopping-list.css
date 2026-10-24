@@ -435,3 +435,114 @@ h3 {
   border-color: var(--accent-hover);
   color: white;
 }
+
+/* Бюджет списка: строка «осталось», полоска; при превышении всё красное (и значок ⚠, чтобы не полагаться на цвет) */
+.budget {
+  margin-bottom: 0.75rem;
+}
+
+.budget-line {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.budget-result {
+  color: var(--text);
+}
+
+.budget.over .budget-result,
+.budget.over .budget-line {
+  color: var(--danger);
+}
+
+.meter {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border-soft);
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--fill);
+}
+
+.budget.over .meter-fill {
+  background: var(--danger);
+}
+
+.budget-btn {
+  background: transparent;
+  border: 0;
+  padding: 0.2rem 0.4rem;
+  color: var(--text-faint);
+  font-size: 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.budget-btn:hover {
+  background: var(--hover);
+  color: var(--accent-text);
+}
+
+.budget-add {
+  border: 1px dashed var(--border);
+  padding: 0.3rem 0.8rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.budget-input {
+  width: 8rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.budget-hint {
+  margin-left: 0.5rem;
+  color: var(--text-faint);
+  font-size: 0.85rem;
+}
+
+.store-mode .budget-btn {
+  min-height: 2.75rem;
+}
+
+.voice-btn.listening {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+  animation: listening-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes listening-pulse {
+  50% {
+    box-shadow: 0 0 0 4px var(--danger-soft);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-btn.listening {
+    animation: none;
+  }
+}
+
+.voice-lang {
+  align-self: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.2rem 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.store-mode .voice-btn,
+.store-mode .voice-lang {
+  min-height: 2.75rem;
+}

@@ -66,6 +66,15 @@ describe('describeChange', () => {
     expect(text).toBe('Оля у «Продукти»: додано — Сир');
   });
 
+  it('should tell about a changed or removed budget', () => {
+    const before = list([item('A')]);
+    expect(describeChange(before, list([item('A')], [], { budget: 100, updatedBy: 'olga@example.com' }), ME)).toBe(
+      'olga у «Продукти»: бюджет — €100',
+    );
+    const had = list([item('A')], [], { budget: 100 });
+    expect(describeChange(had, list([item('A')], [], { budget: 0, updatedBy: 'olga@example.com' }), ME)).toContain('бюджет прибрано');
+  });
+
   it('should say what was returned to the list', () => {
     const text = describeChange(list([], [item('Хліб'), item('Сир')]), list([item('Хліб'), item('Сир')], [], OLGA), ME);
     expect(text).toBe('olga у «Продукти»: повернуто до списку — Хліб, Сир');

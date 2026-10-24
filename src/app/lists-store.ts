@@ -55,6 +55,8 @@ export type ShoppingListData = {
   inviteCode?: string;
   /** Журнал покупок для статистики (см. purchase.ts) */
   archive?: Purchase[];
+  /** Бюджет списка в евро; 0 или нет — бюджет не задан */
+  budget?: number;
 };
 
 /** Человек, который хоть раз входил на сайт (коллекция users, id документа — email) */
@@ -84,6 +86,7 @@ export function loadItems(raw: unknown): Item[] {
       categoryId: obj.categoryId ?? '',
       ...(typeof obj.boughtAt === 'number' ? { boughtAt: obj.boughtAt } : {}),
       ...(obj.pinned === true ? { pinned: true } : {}),
+      ...(typeof obj.note === 'string' && obj.note.trim() ? { note: obj.note.trim() } : {}),
     };
   });
 }
@@ -120,6 +123,7 @@ export function toList(id: string, data: DocumentData): ShoppingListData {
     updatedBy: data['updatedBy'] ?? '',
     inviteCode: data['inviteCode'] ?? '',
     archive: Array.isArray(data['archive']) ? data['archive'] : [],
+    budget: typeof data['budget'] === 'number' && data['budget'] > 0 ? data['budget'] : 0,
   };
 }
 
@@ -385,6 +389,14 @@ export class ListsStore {
 
   removeFromArchive(id: string, records: Purchase[]) {
     updateDoc(doc(this.listsRef, id), { archive: arrayRemove(...records) }).catch((e) => this.fail(e));
+  }
+
+  /** Задать бюджет списка (евро) или убрать его (null). Меняет только это поле — остальное в списке не трогаем. */
+  setBudget(id: string, amount: number | null) {
+    updateDoc(doc(this.listsRef, id), {
+      budget: amount ?? deleteField(),
+      updatedBy: this.email(),
+    }).catch((e) => this.fail(e));
   }
 
   /** Включить (code) или выключить (null) ссылку-приглашение — только владелец */

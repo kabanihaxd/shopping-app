@@ -19,9 +19,29 @@ describe('loadItems', () => {
     expect(loadItems([modern])).toEqual([modern]);
   });
 
+  it('keeps a trimmed note and drops an empty or broken one', () => {
+    const [a, b, c] = loadItems([
+      { id: '1', name: 'Молоко', note: '  без лактози ' },
+      { id: '2', name: 'Хліб', note: '   ' },
+      { id: '3', name: 'Сир', note: 42 },
+    ]);
+    expect(a.note).toBe('без лактози');
+    expect('note' in b).toBe(false);
+    expect('note' in c).toBe(false);
+  });
+
   it('returns an empty list for missing or broken data', () => {
     expect(loadItems(undefined)).toEqual([]);
     expect(loadItems('не масив')).toEqual([]);
+  });
+});
+
+describe('toList budget', () => {
+  it('should be 0 (no budget) unless a positive number is saved', () => {
+    expect(toList('a', {}).budget).toBe(0);
+    expect(toList('a', { budget: 100 }).budget).toBe(100);
+    expect(toList('a', { budget: -5 }).budget).toBe(0);
+    expect(toList('a', { budget: 'много' }).budget).toBe(0);
   });
 });
 

@@ -53,6 +53,50 @@
     }
   }
 
+  <div class="budget" [class.over]="overBudget()">
+    @if (editingBudget()) {
+      <input
+        #budgetField
+        class="budget-input"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        placeholder="Наприклад, 100"
+        aria-label="Бюджет списку, €"
+        [value]="budget() || ''"
+        (keydown.enter)="saveBudget(budgetField)"
+        (keydown.escape)="editingBudget.set(false)"
+        (blur)="saveBudget(budgetField)"
+      />
+      <span class="budget-hint">€ · порожньо — прибрати бюджет</span>
+    } @else if (budget() > 0) {
+      <p class="budget-line" role="status">
+        Бюджет {{ budget() | currency: 'EUR' }} · у списку на {{ listCost() | currency: 'EUR' }} ·
+        @if (overBudget()) {
+          <b class="budget-result">⚠ Перевищено на {{ -budgetLeft() | currency: 'EUR' }}</b>
+        } @else {
+          <b class="budget-result">залишилось {{ budgetLeft() | currency: 'EUR' }}</b>
+        }
+        @if (uahRate()) {
+          (≈ {{ abs(budgetLeft()) * uahRate()! | currency: 'UAH' : 'symbol-narrow' : '1.0-0' }})
+        }
+        <button class="budget-btn" (click)="editingBudget.set(true)" title="Змінити бюджет" aria-label="Змінити бюджет">✎</button>
+      </p>
+      <div
+        class="meter"
+        role="meter"
+        aria-label="Скільки бюджету використано"
+        aria-valuemin="0"
+        [attr.aria-valuemax]="budget()"
+        [attr.aria-valuenow]="listCost()"
+      >
+        <div class="meter-fill" [style.width.%]="budgetPercent()"></div>
+      </div>
+    } @else {
+      <button class="budget-btn budget-add" (click)="editingBudget.set(true)">💰 Задати бюджет</button>
+    }
+  </div>
+
   <p class="rate">
     @if (rates.isLoading()) {
       Завантажую курс євро…
@@ -140,8 +184,33 @@
       title="Сканувати штрихкод"
       aria-label="Сканувати штрихкод"
     >📷</button>
+    @if (voice.supported) {
+      <button
+        class="scan-btn voice-btn"
+        type="button"
+        [class.listening]="voiceListening()"
+        [attr.aria-pressed]="voiceListening()"
+        (click)="toggleVoice()"
+        title="Голосовий ввід: скажіть «молоко, два хліби, яйця». Мовлення розпізнає ваш браузер (Chrome — через Google, Safari — через Apple)."
+        aria-label="Голосовий ввід"
+      >🎤</button>
+      <button
+        class="voice-lang"
+        type="button"
+        (click)="toggleVoiceLang()"
+        title="Мова розпізнавання мовлення"
+        aria-label="Мова розпізнавання мовлення"
+      >{{ voiceLang() === 'uk-UA' ? 'UA' : 'RU' }}</button>
+    }
     <button class="add-btn" (click)="add(newItem, newQty, newPrice, newCat)">Додати</button>
   </div>
+  @if (voiceListening()) {
+    <p class="scan-message" role="status">
+      🎤 Слухаю… {{ voiceInterim() || 'скажіть, що купити, наприклад: «молоко, два хліби, яйця»' }}
+    </p>
+  } @else if (voiceMessage(); as message) {
+    <p class="scan-message" role="status">{{ message }}</p>
+  }
   @if (scanMessage(); as message) {
     <p class="scan-message" role="status">{{ message }}</p>
   }

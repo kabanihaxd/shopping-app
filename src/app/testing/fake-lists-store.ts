@@ -83,6 +83,10 @@ export class FakeListsStore {
     this.update(id, (l) => ({ ...l, archive: (l.archive ?? []).filter((r) => !gone.has(r.r)) }));
   }
 
+  setBudget(id: string, amount: number | null) {
+    this.update(id, (l) => ({ ...l, budget: amount ?? 0 }));
+  }
+
   setInviteCode(id: string, code: string | null) {
     this.update(id, (l) => ({ ...l, inviteCode: code ?? '' }));
   }

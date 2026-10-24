@@ -7,6 +7,8 @@ import { ListsStore } from '../lists-store';
 import { Item } from '../item';
 import { FakeListsStore, provideFakeListsStore } from '../testing/fake-lists-store';
 import { FakeScanEngine, provideFakeScanEngine } from '../testing/fake-scan-engine';
+import { FakeVoiceEngine, provideFakeVoiceEngine } from '../testing/fake-voice-engine';
+import { VoiceEngine } from '../voice-engine';
 import { ScanEngine } from '../barcode-scanner/scan-engine';
 
 /** Товар для тестов: указываем только то, что важно в конкретном тесте */
@@ -32,6 +34,7 @@ async function openList(toBuy: Item[] = [], bought: Item[] = []) {
       provideHttpClientTesting(),
       provideFakeListsStore(),
       provideFakeScanEngine(),
+      provideFakeVoiceEngine(),
     ],
   }).compileComponents();
 
@@ -700,5 +703,250 @@ describe('«Купити знову»', () => {
     button('Очистити').click();
     await stable();
     expect(list().archive!.map((r) => r.name)).toEqual(['Молоко']);
+  });
+});
+
+describe('бюджет списка', () => {
+  const priced = (name: string, price: number, quantity = 1, extra: Partial<Item> = {}) =>
+    item(name, { price, quantity, ...extra });
+
+  async function openBudget(toBuy: Item[] = [], bought: Item[] = [], budget = 0) {
+    const env = await openList(toBuy, bought);
+    if (budget) env.store.update(env.list().id, (l) => ({ ...l, budget }));
+    await env.stable();
+    const setBudget = async (text: string) => {
+      const field = env.page.querySelector<HTMLInputElement>('.budget-input')!;
+      field.value = text;
+      field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      await env.stable();
+    };
+    const line = () => env.page.querySelector('.budget-line')?.textContent?.replace(/\s+/g, ' ').trim();
+    return { ...env, setBudget, line, box: () => env.page.querySelector<HTMLElement>('.budget')! };
+  }
+
+  it('offers to set a budget, and shows what is left', async () => {
+    const { page, list, button, setBudget, line, stable } = await openBudget([priced('Сир', 6, 2), priced('Хліб', 3)], [priced('Молоко', 5)]);
+    expect(page.querySelector('.budget-line')).toBeNull();
+
+    button('💰 Задати бюджет').click();
+    await stable();
+    await setBudget('100');
+
+    expect(list().budget).toBe(100);
+    // в списке: 12 + 3 + 5 = 20 → осталось 80
+    expect(line()).toContain('Бюджет €100.00');
+    expect(line()).toContain('у списку на €20.00');
+    expect(line()).toContain('залишилось €80.00');
+    expect(page.querySelector('.budget')!.classList).not.toContain('over');
+    expect(page.querySelector('.meter')!.getAttribute('aria-valuenow')).toBe('20');
+    expect(page.querySelector<HTMLElement>('.meter-fill')!.style.width).toBe('20%');
+  });
+
+  it('turns red and says by how much the budget is exceeded', async () => {
+    const { box, line } = await openBudget([priced('Стейк', 80), priced('Вино', 45)], [], 100);
+
+    expect(box().classList).toContain('over');
+    expect(line()).toContain('⚠ Перевищено на €25.00'); // не только цветом — есть значок и слова
+    expect(box().querySelector<HTMLElement>('.meter-fill')!.style.width).toBe('100%');
+  });
+
+  it('is not "over" when the list costs exactly the budget', async () => {
+    const { box, line } = await openBudget([priced('Сир', 100)], [], 100);
+    expect(box().classList).not.toContain('over');
+    expect(line()).toContain('залишилось €0.00');
+  });
+
+  it('reacts when items are added or removed', async () => {
+    const { store, list, box, line, stable } = await openBudget([priced('Сир', 60)], [], 100);
+    expect(box().classList).not.toContain('over');
+
+    store.update(list().id, (l) => ({ ...l, toBuy: [...l.toBuy, priced('Ікра', 50, 1, { id: 'caviar' })] }));
+    await stable();
+    expect(box().classList).toContain('over');
+
+    store.update(list().id, (l) => ({ ...l, toBuy: l.toBuy.filter((x) => x.id !== 'caviar') }));
+    await stable();
+    expect(box().classList).not.toContain('over');
+    expect(line()).toContain('залишилось €40.00');
+  });
+
+  it('accepts a comma, rounds to cents and edits an existing budget', async () => {
+    const { list, page, setBudget, stable } = await openBudget([], [], 100);
+
+    page.querySelector<HTMLButtonElement>('button[aria-label="Змінити бюджет"]')!.click();
+    await stable();
+    expect(page.querySelector<HTMLInputElement>('.budget-input')!.value).toBe('100');
+    await setBudget(' 250,555 ');
+
+    expect(list().budget).toBe(250.56);
+  });
+
+  it('removes the budget when the field is left empty, and ignores nonsense', async () => {
+    const { list, page, setBudget, stable } = await openBudget([], [], 100);
+
+    page.querySelector<HTMLButtonElement>('button[aria-label="Змінити бюджет"]')!.click();
+    await stable();
+    await setBudget('');
+    expect(list().budget).toBe(0);
+    expect(page.querySelector('.budget-add')).not.toBeNull();
+
+    page.querySelector<HTMLButtonElement>('.budget-add')!.click();
+    await stable();
+    await setBudget('-20');
+    expect(list().budget).toBe(0); // отрицательный бюджет — не бюджет
+  });
+
+  it('keeps the old budget when the typed text makes no sense', async () => {
+    const { list, page, setBudget, stable } = await openBudget([], [], 100);
+
+    page.querySelector<HTMLButtonElement>('button[aria-label="Змінити бюджет"]')!.click();
+    await stable();
+    await setBudget('сто євро');
+    expect(list().budget).toBe(100);
+
+    page.querySelector<HTMLButtonElement>('button[aria-label="Змінити бюджет"]')!.click();
+    await stable();
+    await setBudget('-5');
+    expect(list().budget).toBe(100);
+  });
+
+  it('cancels with Escape and does not save on the blur that follows', async () => {
+    const { list, page, button, stable } = await openBudget([], [], 100);
+
+    page.querySelector<HTMLButtonElement>('button[aria-label="Змінити бюджет"]')!.click();
+    await stable();
+    const field = page.querySelector<HTMLInputElement>('.budget-input')!;
+    field.value = '5';
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    field.dispatchEvent(new Event('blur'));
+    await stable();
+
+    expect(list().budget).toBe(100);
+    expect(page.querySelector('.budget-input')).toBeNull();
+  });
+});
+
+describe('голосовой ввод', () => {
+  afterEach(() => localStorage.removeItem('voice-lang'));
+
+  async function openVoice(toBuy: Item[] = []) {
+    const env = await openList(toBuy);
+    const engine = TestBed.inject(VoiceEngine) as unknown as FakeVoiceEngine;
+    const mic = () => env.page.querySelector<HTMLButtonElement>('.voice-btn')!;
+    const message = () => env.page.querySelector('.scan-message')?.textContent?.replace(/\s+/g, ' ').trim();
+    return { ...env, engine, mic, message };
+  }
+
+  it('adds everything that was said at once, with quantities', async () => {
+    const { list, names, mic, engine, stable } = await openVoice();
+
+    mic().click();
+    await stable();
+    engine.say('молоко, два хліби, яйця');
+    await stable();
+
+    expect(names(list().toBuy)).toEqual(['Молоко', 'Хліби', 'Яйця']);
+    expect(list().toBuy.map((x) => x.quantity)).toEqual([1, 2, 1]);
+  });
+
+  it('shows what it hears while listening and stops listening at the end', async () => {
+    const { page, mic, engine, message, stable } = await openVoice();
+
+    mic().click();
+    await stable();
+    expect(mic().classList).toContain('listening');
+    expect(message()).toContain('Слухаю');
+
+    engine.interim('молоко і два');
+    await stable();
+    expect(message()).toContain('молоко і два');
+
+    engine.say('молоко і два хліби');
+    await stable();
+    expect(mic().classList).not.toContain('listening');
+    expect(page.querySelector('.scan-message')).toBeNull(); // успех: плашка с «Скасувати» внизу экрана, а не сообщение
+  });
+
+  it('tells what was added and can undo it all', async () => {
+    const { store, list, mic, engine, stable } = await openVoice([item('Було раніше')]);
+
+    mic().click();
+    engine.say('молоко, два хліби, яйця, сир');
+    await stable();
+
+    expect(store.notices()[0].text).toBe('Додано голосом (4): Молоко, 2× Хліби, Яйця і ще 1');
+    expect((store as unknown as { lastNoticeMs: number }).lastNoticeMs).toBe(8000);
+
+    store.notices()[0].action!.run();
+    await stable();
+    expect(list().toBuy.map((x) => x.name)).toEqual(['Було раніше']); // убрали только добавленное голосом
+  });
+
+  it('fills in price and category of items it already knows', async () => {
+    const { list, mic, engine, stable } = await openVoice([item('Молоко', { price: 1.5, categoryId: 'dairy' })]);
+
+    mic().click();
+    engine.say('молоко');
+    await stable();
+
+    expect(list().toBuy[1]).toMatchObject({ name: 'Молоко', price: 1.5, categoryId: 'dairy', quantity: 1 });
+  });
+
+  it('adds whatever was heard when the user taps the mic again to stop', async () => {
+    const { list, names, mic, engine, stable } = await openVoice();
+
+    mic().click();
+    await stable();
+    mic().click(); // «хватит»
+    expect(engine.stops).toBe(1);
+    engine.say('хліб');
+    await stable();
+
+    expect(names(list().toBuy)).toEqual(['Хліб']);
+  });
+
+  it('explains problems instead of adding anything', async () => {
+    const { list, mic, engine, message, stable } = await openVoice();
+
+    mic().click();
+    engine.fail('not-allowed');
+    await stable();
+    expect(message()).toContain('Немає доступу до мікрофона');
+
+    mic().click();
+    engine.end(); // ничего не сказали и ошибки не было
+    await stable();
+    expect(message()).toContain('Нічого не почув');
+
+    mic().click();
+    engine.say('додай');
+    await stable();
+    expect(message()).toContain('Не вдалося розібрати');
+    expect(list().toBuy).toEqual([]);
+  });
+
+  it('switches the recognition language between Ukrainian and Russian and remembers it', async () => {
+    const { page, mic, engine, stable } = await openVoice();
+    mic().click();
+    expect(engine.lastLang).toBe('uk-UA');
+    engine.end();
+    await stable();
+
+    page.querySelector<HTMLButtonElement>('.voice-lang')!.click();
+    await stable();
+    mic().click();
+    expect(engine.lastLang).toBe('ru-RU');
+    expect(localStorage.getItem('voice-lang')).toBe('ru-RU');
+  });
+
+  it('hides the microphone where the browser cannot recognize speech', async () => {
+    FakeVoiceEngine.available = false;
+    try {
+      const { page } = await openVoice();
+      expect(page.querySelector('.voice-btn')).toBeNull();
+      expect(page.querySelector('.voice-lang')).toBeNull();
+    } finally {
+      FakeVoiceEngine.available = true;
+    }
   });
 });

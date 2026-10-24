@@ -46,6 +46,9 @@ export function describeChange(
   const parts: string[] = [];
   if (added.length) parts.push(`додано — ${names(added)}`);
   if (bought.length) parts.push(`куплено — ${names(bought)}`);
+  if ((after.budget ?? 0) !== (before.budget ?? 0)) {
+    parts.push(after.budget ? `бюджет — €${after.budget}` : 'бюджет прибрано');
+  }
   if (returned.length) parts.push(`повернуто до списку — ${names(returned)}`);
   if (removed) parts.push(`видалено товарів: ${removed}`);
   // Изменился только состав участников или ссылка-приглашение — отдельно об этом уже сказано выше

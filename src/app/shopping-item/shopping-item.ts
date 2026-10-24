@@ -3,7 +3,7 @@ import { CurrencyPipe } from '@angular/common';
 import { CdkDragHandle } from '@angular/cdk/drag-drop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Category } from '../category';
-import { Item } from '../item';
+import { Item, NOTE_MAX } from '../item';
 
 @Component({
   imports: [CdkDragHandle, CurrencyPipe, ReactiveFormsModule],
@@ -38,12 +38,15 @@ export class ShoppingItem {
     quantity: [1, [Validators.required, Validators.min(1)]],
     price: [0, [Validators.required, Validators.min(0)]],
     categoryId: [''],
+    note: ['', Validators.maxLength(NOTE_MAX)],
   });
 
+  protected readonly noteMax = NOTE_MAX;
+
   protected startEdit() {
-    const { name, quantity, price } = this.item();
+    const { name, quantity, price, note } = this.item();
     // Если категорию тем временем удалили — в форме будет «Без категорії»
-    this.form.reset({ name, quantity, price, categoryId: this.category()?.id ?? '' });
+    this.form.reset({ name, quantity, price, categoryId: this.category()?.id ?? '', note: note ?? '' });
     this.editing.set(true);
   }
 
@@ -56,8 +59,12 @@ export class ShoppingItem {
       this.form.markAllAsTouched();
       return;
     }
-    const { name, quantity, price, categoryId } = this.form.getRawValue();
-    this.save.emit({ ...this.item(), name: name.trim(), quantity, price, categoryId });
+    const { name, quantity, price, categoryId, note } = this.form.getRawValue();
+    // Пустая заметка — поля нет совсем (Firestore не принимает undefined)
+    const { note: oldNote, ...rest } = this.item();
+    const edited: Item = { ...rest, name: name.trim(), quantity, price, categoryId };
+    const text = note.trim();
+    this.save.emit(text ? { ...edited, note: text } : edited);
     this.editing.set(false);
   }
 }

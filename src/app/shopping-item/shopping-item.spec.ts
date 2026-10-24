@@ -129,4 +129,57 @@ describe('ShoppingItem', () => {
     await fixture.whenStable();
     expect(el.querySelector('.drag-handle')).not.toBeNull();
   });
+
+  describe('note', () => {
+    async function edit() {
+      const el = fixture.nativeElement as HTMLElement;
+      const saved: Record<string, unknown>[] = [];
+      component.save.subscribe((x) => saved.push(x as unknown as Record<string, unknown>));
+      (el.querySelector('.edit-btn') as HTMLButtonElement).click();
+      await fixture.whenStable();
+      const note = el.querySelector('input[formControlName="note"]') as HTMLInputElement;
+      const submit = async () => {
+        (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+        await fixture.whenStable();
+      };
+      return { el, saved, note, submit };
+    }
+
+    it('should show no note line when there is no note', () => {
+      expect((fixture.nativeElement as HTMLElement).querySelector('.item-note')).toBeNull();
+    });
+
+    it('should show the note under the item', async () => {
+      fixture.componentRef.setInput('item', { id: '1', name: 'Молоко', quantity: 1, price: 0, categoryId: '', note: 'без лактози' });
+      await fixture.whenStable();
+      expect((fixture.nativeElement as HTMLElement).querySelector('.item-note')!.textContent).toContain('без лактози');
+    });
+
+    it('should save a trimmed note from the edit form', async () => {
+      const { note, saved, submit } = await edit();
+      note.value = '  бренд Х  ';
+      note.dispatchEvent(new Event('input'));
+      await submit();
+
+      expect(saved[0]['note']).toBe('бренд Х');
+    });
+
+    it('should start the form with the existing note and drop the field when it is cleared', async () => {
+      fixture.componentRef.setInput('item', { id: '1', name: 'Молоко', quantity: 1, price: 0, categoryId: '', note: 'без лактози' });
+      await fixture.whenStable();
+      const { note, saved, submit } = await edit();
+      expect(note.value).toBe('без лактози');
+
+      note.value = '   ';
+      note.dispatchEvent(new Event('input'));
+      await submit();
+
+      expect('note' in saved[0]).toBe(false); // Firestore не принимает undefined — поля не должно быть совсем
+    });
+
+    it('should limit the note length in the field', async () => {
+      const { note } = await edit();
+      expect(note.getAttribute('maxlength')).toBe('100');
+    });
+  });
 });

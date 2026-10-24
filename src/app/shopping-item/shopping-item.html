@@ -15,6 +15,14 @@
         <option [value]="cat.id">{{ cat.icon }} {{ cat.name }}</option>
       }
     </select>
+    <input
+      class="note-input"
+      type="text"
+      formControlName="note"
+      [attr.maxlength]="noteMax"
+      placeholder="Нотатка: без лактози, бренд Х, взяти велику упаковку…"
+      aria-label="Нотатка до товару"
+    />
     <button class="save-btn" type="submit">Зберегти</button>
     <button class="cancel-btn" type="button" (click)="cancel()">Скасувати</button>
 
@@ -52,6 +60,9 @@
           <b>{{ item().quantity * item().price | currency: 'EUR' }}</b>
         }
       </span>
+      @if (item().note; as note) {
+        <span class="item-note">📝 {{ note }}</span>
+      }
     </span>
   </span>
   <span class="actions">

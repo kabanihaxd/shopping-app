@@ -5,7 +5,8 @@ export type TextGroup = { title: string; items: Item[] };
 function line(item: Item): string {
   const qty = item.quantity > 1 ? ` × ${item.quantity}` : '';
   const price = item.price > 0 ? ` — ${(item.quantity * item.price).toFixed(2)} €` : '';
-  return `• ${item.name}${qty}${price}`;
+  const note = item.note ? ` (${item.note})` : '';
+  return `• ${item.name}${qty}${price}${note}`;
 }
 
 /** Список «Треба купити» обычным текстом для мессенджера: заголовок и товары по категориям */
