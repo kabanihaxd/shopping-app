@@ -1,4 +1,4 @@
-import { Component, ElementRef, computed, effect, inject, input, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import {
   CdkDrag,
@@ -15,10 +15,34 @@ import { CategoriesEditor } from '../categories-editor/categories-editor';
 import { Category } from '../category';
 import { Item } from '../item';
 import { ListsStore } from '../lists-store';
+import { listToText } from '../list-text';
 import { ProductLookup, isBarcode } from '../product-lookup';
+import { purchasesOf } from '../purchase';
 import { ProgressBar } from '../progress-bar/progress-bar';
 import { ShoppingItem } from '../shopping-item/shopping-item';
 import { HistoryEntry, suggest } from '../suggestions';
+import { ScreenWakeLock } from '../wake-lock';
+
+/** Ключ в localStorage: включён ли режим «У магазині» (личная настройка устройства) */
+const STORE_MODE_KEY = 'store-mode';
+
+function readStoreMode(): boolean {
+  try {
+    return localStorage.getItem(STORE_MODE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Сколько секунд после удаления можно нажать «Скасувати» */
+const UNDO_MS = 5000;
+
+/** Вставляет товар на прежнее место (а если список стал короче — в конец) */
+function insertAt(items: Item[], index: number, item: Item): Item[] {
+  const copy = [...items];
+  copy.splice(Math.min(index, copy.length), 0, item);
+  return copy;
+}
 
 export const RATES_URL = 'https://open.er-api.com/v6/latest/EUR';
 
@@ -71,6 +95,7 @@ function sumCost(list: Item[]): number {
 export class ShoppingList {
   private readonly store = inject(ListsStore);
   private readonly products = inject(ProductLookup);
+  protected readonly wakeLock = inject(ScreenWakeLock);
 
   /** Берётся из адреса /list/:id (withComponentInputBinding в app.config.ts) */
   readonly id = input.required<string>();
@@ -82,7 +107,26 @@ export class ShoppingList {
   /** Поле с названием — появляется только в режиме переименования */
   private readonly nameField = viewChild<ElementRef<HTMLInputElement>>('listName');
 
+  /** Режим «У магазині»: экран не гаснет, кнопки и галочки крупнее */
+  protected readonly storeMode = signal(readStoreMode());
+
+  protected toggleStoreMode() {
+    this.storeMode.update((on) => !on);
+    try {
+      localStorage.setItem(STORE_MODE_KEY, this.storeMode() ? '1' : '0');
+    } catch {
+      // не запомнится — после перезагрузки режим выключен
+    }
+  }
+
   constructor() {
+    // Пока режим включён и список открыт — экран не гаснет. Уходим со страницы — блокировка снимается.
+    effect((onCleanup) => {
+      if (!this.storeMode()) return;
+      untracked(() => this.wakeLock.enable());
+      onCleanup(() => this.wakeLock.disable());
+    });
+
     // Как только поле появилось на странице — ставим в него курсор и выделяем текст
     effect(() => {
       const field = this.nameField()?.nativeElement;
@@ -324,11 +368,33 @@ export class ShoppingList {
   }
 
   protected remove(item: Item) {
-    this.store.update(this.id(), (l) => ({
+    const list = this.list();
+    if (!list) return;
+    // Запоминаем, откуда удаляем и с какого места, — чтобы вернуть ровно туда же
+    const from: 'toBuy' | 'bought' = list.toBuy.some((x) => x.id === item.id) ? 'toBuy' : 'bought';
+    const index = list[from].findIndex((x) => x.id === item.id);
+    const listId = this.id();
+
+    this.store.update(listId, (l) => ({
       ...l,
       toBuy: l.toBuy.filter((x) => x.id !== item.id),
       bought: l.bought.filter((x) => x.id !== item.id),
     }));
+    this.store.showNotice(
+      {
+        listId,
+        text: `Видалено «${item.name}»`,
+        action: {
+          label: 'Скасувати',
+          run: () =>
+            this.store.update(listId, (l) => {
+              const already = [...l.toBuy, ...l.bought].some((x) => x.id === item.id); // второй раз не вставляем
+              return already ? l : { ...l, [from]: insertAt(l[from], index, item) };
+            }),
+        },
+      },
+      UNDO_MS,
+    );
   }
 
   protected updateItem(updated: Item) {
@@ -362,8 +428,56 @@ export class ShoppingList {
     }));
   }
 
+  /**
+   * Убирает купленные товары из «Вже куплено» и записывает их в журнал покупок (чтобы статистика их не потеряла).
+   * Вернуть назад можно кнопкой «Скасувати» на плашке.
+   */
+  private takeBought(text: string, moveToBuy: boolean) {
+    const listId = this.id();
+    const items = this.bought();
+    if (items.length === 0) return;
+    const records = purchasesOf(items, this.categories());
+    const ids = new Set(items.map((x) => x.id));
+    // Вернули в список — товар снова «треба купити»: дата покупки уже в журнале, у самого товара её нет
+    const returned = moveToBuy ? items.map(({ boughtAt, ...rest }) => rest) : [];
+
+    this.store.update(listId, (l) => ({
+      ...l,
+      bought: l.bought.filter((x) => !ids.has(x.id)),
+      toBuy: [...l.toBuy, ...returned],
+    }));
+    if (records.length) this.store.addToArchive(listId, records);
+
+    this.store.showNotice(
+      {
+        listId,
+        text,
+        action: {
+          label: 'Скасувати',
+          run: () => {
+            this.store.update(listId, (l) => {
+              const present = new Set(l.bought.map((x) => x.id));
+              return {
+                ...l,
+                toBuy: l.toBuy.filter((x) => !(moveToBuy && ids.has(x.id))),
+                bought: [...items.filter((x) => !present.has(x.id)), ...l.bought],
+              };
+            });
+            if (records.length) this.store.removeFromArchive(listId, records);
+          },
+        },
+      },
+      UNDO_MS,
+    );
+  }
+
+  /** «Купити знову»: все купленное — обратно в «Треба купити» одним нажатием (для регулярных покупок) */
+  protected buyAgain() {
+    this.takeBought(`Повернуто до списку: ${this.bought().length}`, true);
+  }
+
   protected clearBought() {
-    this.store.update(this.id(), (l) => ({ ...l, bought: [] }));
+    this.takeBought(`Очищено куплене: ${this.bought().length}`, false);
   }
 
   /** Владелец списка может приглашать и убирать участников */
@@ -394,6 +508,7 @@ export class ShoppingList {
 
   /** Показываем «Скопійовано ✓» пару секунд */
   protected readonly copied = signal(false);
+  protected readonly listCopied = signal(false);
   /** Меню «Поделиться» есть в телефонах и Safari; на компьютере — только копирование */
   protected readonly canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
@@ -414,6 +529,22 @@ export class ShoppingList {
       setTimeout(() => this.copied.set(false), 2000);
     } catch {
       field.select(); // буфер недоступен — хотя бы выделим, дальше Ctrl+C
+    }
+  }
+
+  /** «Надіслати»: меню телефона (Viber, Telegram, SMS…); на компьютере — копируем текст */
+  protected async sendList() {
+    const text = listToText(this.list()?.name ?? '', this.groups());
+    try {
+      if (this.canShare) {
+        await navigator.share({ title: this.list()?.name, text });
+      } else {
+        await navigator.clipboard.writeText(text);
+        this.listCopied.set(true);
+        setTimeout(() => this.listCopied.set(false), 2000);
+      }
+    } catch {
+      // человек закрыл меню — это не ошибка
     }
   }
 

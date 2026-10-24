@@ -173,3 +173,20 @@
 .theme-btn:hover {
   background: var(--accent-faint);
 }
+
+.notice-action {
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  background: transparent;
+  border: 1px solid white;
+  border-radius: 6px;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.notice-action:hover {
+  background: rgba(255, 255, 255, 0.15);
+}

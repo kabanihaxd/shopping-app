@@ -66,6 +66,16 @@ describe('describeChange', () => {
     expect(text).toBe('Оля у «Продукти»: додано — Сир');
   });
 
+  it('should say what was returned to the list', () => {
+    const text = describeChange(list([], [item('Хліб'), item('Сир')]), list([item('Хліб'), item('Сир')], [], OLGA), ME);
+    expect(text).toBe('olga у «Продукти»: повернуто до списку — Хліб, Сир');
+  });
+
+  it('should stay silent when only the purchase log changed', () => {
+    const entry = { r: '1', name: 'A', amount: 1, category: 'x', icon: '🛒', at: 1 };
+    expect(describeChange(list([item('A')]), list([item('A')], [], { archive: [entry], updatedBy: 'olga@example.com' }), ME)).toBeNull();
+  });
+
   it('should tell that a list was shared with me', () => {
     expect(describeChange(undefined, list([]), ME)).toBe('Вам надали доступ до списку «Продукти»');
   });

@@ -3,6 +3,7 @@ import { DEFAULT_CATEGORIES } from '../category';
 import { AppUser, ListsStore, ShoppingListData, copyOfList } from '../lists-store';
 import { Item } from '../item';
 import { Notice } from '../notices';
+import { Purchase } from '../purchase';
 import { HistoryEntry, forgetItem, rememberItem } from '../suggestions';
 
 /** Хранилище для тестов: всё в памяти, без Firebase и интернета */
@@ -26,6 +27,14 @@ export class FakeListsStore {
 
   setNickname(nickname: string) {
     this.nicknames.update((all) => ({ ...all, [this.email()]: nickname }));
+  }
+
+  /** Сколько миллисекунд плашка должна висеть (таймера в тестах нет — смотрим, что просили) */
+  lastNoticeMs = 0;
+
+  showNotice(notice: Omit<Notice, 'id'>, ms = 10_000) {
+    this.lastNoticeMs = ms;
+    this.notices.update((all) => [...all, { ...notice, id: crypto.randomUUID() }]);
   }
 
   dismissNotice(id: string) {
@@ -63,6 +72,15 @@ export class FakeListsStore {
     const copy = { id: crypto.randomUUID(), ...copyOfList(list, this.email(), Date.now()) };
     this.lists.update((all) => [...all, copy]);
     return copy.id;
+  }
+
+  addToArchive(id: string, records: Purchase[]) {
+    this.update(id, (l) => ({ ...l, archive: [...(l.archive ?? []), ...records] }));
+  }
+
+  removeFromArchive(id: string, records: Purchase[]) {
+    const gone = new Set(records.map((r) => r.r));
+    this.update(id, (l) => ({ ...l, archive: (l.archive ?? []).filter((r) => !gone.has(r.r)) }));
   }
 
   setInviteCode(id: string, code: string | null) {

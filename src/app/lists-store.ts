@@ -32,6 +32,7 @@ import {
 import { ADMIN_UID, firebaseConfig } from './firebase-config';
 import { Category, DEFAULT_CATEGORIES } from './category';
 import { Item } from './item';
+import { Purchase } from './purchase';
 import { Notice, describeChange } from './notices';
 import { cleanNickname } from './nickname';
 import { HistoryEntry, forgetItem, rememberItem } from './suggestions';
@@ -52,6 +53,8 @@ export type ShoppingListData = {
   updatedBy?: string;
   /** Секретный код ссылки-приглашения; пусто — ссылка выключена */
   inviteCode?: string;
+  /** Журнал покупок для статистики (см. purchase.ts) */
+  archive?: Purchase[];
 };
 
 /** Человек, который хоть раз входил на сайт (коллекция users, id документа — email) */
@@ -116,6 +119,7 @@ export function toList(id: string, data: DocumentData): ShoppingListData {
     createdAt: data['createdAt'] ?? 0,
     updatedBy: data['updatedBy'] ?? '',
     inviteCode: data['inviteCode'] ?? '',
+    archive: Array.isArray(data['archive']) ? data['archive'] : [],
   };
 }
 
@@ -360,13 +364,27 @@ export class ListsStore {
       if (change.type === 'modified' && !before) continue;
       const after = toList(change.doc.id, change.doc.data());
       const text = describeChange(before, after, this.email(), (e) => this.nicknames()[e] || e.split('@')[0]);
-      if (text) this.notify({ id: crypto.randomUUID(), listId: after.id, text });
+      if (text) this.showNotice({ listId: after.id, text });
     }
   }
 
-  private notify(notice: Notice) {
-    this.notices.update((all) => [...all, notice].slice(-3)); // больше трёх сразу не показываем
-    setTimeout(() => this.dismissNotice(notice.id), 10_000);
+  /** Показать плашку внизу экрана; сама исчезнет через `ms` миллисекунд */
+  showNotice(notice: Omit<Notice, 'id'>, ms = 10_000) {
+    const id = crypto.randomUUID();
+    this.notices.update((all) => [...all, { ...notice, id }].slice(-3)); // больше трёх сразу не показываем
+    setTimeout(() => this.dismissNotice(id), ms);
+  }
+
+  /**
+   * Дописать покупки в журнал / убрать их оттуда (при отмене). arrayUnion и arrayRemove меняют только журнал,
+   * не трогая остальное в списке, — поэтому журнал не перезаписывается при каждом изменении товаров.
+   */
+  addToArchive(id: string, records: Purchase[]) {
+    updateDoc(doc(this.listsRef, id), { archive: arrayUnion(...records) }).catch((e) => this.fail(e));
+  }
+
+  removeFromArchive(id: string, records: Purchase[]) {
+    updateDoc(doc(this.listsRef, id), { archive: arrayRemove(...records) }).catch((e) => this.fail(e));
   }
 
   /** Включить (code) или выключить (null) ссылку-приглашение — только владелец */

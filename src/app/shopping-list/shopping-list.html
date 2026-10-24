@@ -1,5 +1,17 @@
-<div class="card">
-  <a class="back-link" routerLink="/">← Усі списки</a>
+<div class="card" [class.store-mode]="storeMode()">
+  <div class="top-row">
+    <a class="back-link" routerLink="/">← Усі списки</a>
+    <button class="store-toggle" [attr.aria-pressed]="storeMode()" (click)="toggleStoreMode()">🛒 У магазині</button>
+  </div>
+  @if (storeMode()) {
+    <p class="store-note" role="status">
+      @switch (wakeLock.state()) {
+        @case ('unsupported') { Цей браузер не вміє тримати екран увімкненим — екран може згаснути, але кнопки вже збільшено. }
+        @case ('failed') { Не вдалося вимкнути гасіння екрана (можливо, увімкнена економія заряду). }
+        @default { Екран не гасне, поки список відкрито. }
+      }
+    </p>
+  }
 
   @if (!list()) {
     <h1>Список не знайдено</h1>
@@ -34,6 +46,11 @@
       }
     </p>
     <app-progress-bar [done]="total() - remaining()" [total]="total()" />
+    @if (toBuy().length > 0) {
+      <button class="add-btn send-btn" (click)="sendList()">
+        {{ listCopied() ? 'Скопійовано ✓' : canShare ? 'Надіслати' : 'Копіювати список' }}
+      </button>
+    }
   }
 
   <p class="rate">
@@ -160,7 +177,10 @@
   <div class="section-header">
     <h2>Вже куплено</h2>
     @if (bought().length > 0) {
-      <button class="clear-btn" (click)="clearBought()">Очистити</button>
+      <span class="section-actions">
+        <button class="clear-btn buy-again-btn" (click)="buyAgain()" title="Повернути все куплене в «Треба купити»">↩ Купити знову</button>
+        <button class="clear-btn" (click)="clearBought()">Очистити</button>
+      </span>
     }
   </div>
   @if (boughtCost() > 0) {

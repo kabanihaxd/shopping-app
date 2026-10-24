@@ -69,6 +69,25 @@ describe('monthlyStats', () => {
   });
 });
 
+describe('monthlyStats with the purchase log', () => {
+  const record = (name: string, amount: number, at: number, category = 'Молочне та яйця') => ({
+    r: name + at, name, amount, category, icon: '🥛', at,
+  });
+
+  it('should count purchases that already left the bought list', () => {
+    const l = { ...list([item('Хліб', 2, day(9, 3), 'bakery')]), archive: [record('Сир', 10, day(9, 5)), record('Старе', 99, day(8, 5))] };
+    const stats = monthlyStats([l], OCT);
+    expect(stats.total).toBe(12);
+    expect(stats.count).toBe(2);
+    expect(stats.byDay[4]).toBe(10);
+  });
+
+  it('should merge log records and bought items of the same category', () => {
+    const l = { ...list([item('Молоко', 4, day(9, 3), 'dairy')]), archive: [record('Сир', 10, day(9, 5))] };
+    expect(monthlyStats([l], OCT).byCategory.map((c) => [c.name, c.amount])).toEqual([['Молочне та яйця', 14]]);
+  });
+});
+
 describe('month helpers', () => {
   it('should count days, including leap February', () => {
     expect(daysInMonth({ year: 2026, month: 1 })).toBe(28);

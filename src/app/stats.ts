@@ -52,27 +52,30 @@ export function monthlyStats(lists: ShoppingListData[], ref: MonthRef): MonthSta
   let count = 0;
   let undated = 0;
 
+  /** Учитывает одну покупку (если она в нужном месяце) */
+  const add = (at: number, cost: number, name: string, icon: string) => {
+    const bought = new Date(at);
+    if (bought.getFullYear() !== ref.year || bought.getMonth() !== ref.month) return;
+    total += cost;
+    count++;
+    byDay[bought.getDate() - 1] += cost;
+    const key = name.trim().toLowerCase();
+    const entry = categories.get(key) ?? { key, name, icon, amount: 0 };
+    entry.amount += cost;
+    categories.set(key, entry);
+  };
+
   for (const list of lists) {
     for (const item of list.bought) {
       if (item.boughtAt === undefined) {
         undated++;
         continue;
       }
-      const bought = new Date(item.boughtAt);
-      if (bought.getFullYear() !== ref.year || bought.getMonth() !== ref.month) continue;
-
-      const cost = item.quantity * item.price;
-      total += cost;
-      count++;
-      byDay[bought.getDate() - 1] += cost;
-
       const category = list.categories.find((c) => c.id === item.categoryId);
-      const name = category?.name ?? 'Без категорії';
-      const key = name.trim().toLowerCase();
-      const entry = categories.get(key) ?? { key, name, icon: category?.icon ?? '🛒', amount: 0 };
-      entry.amount += cost;
-      categories.set(key, entry);
+      add(item.boughtAt, item.quantity * item.price, category?.name ?? 'Без категорії', category?.icon ?? '🛒');
     }
+    // Покупки, которые уже ушли из «Вже куплено» («Купити знову», «Очистити»), лежат в журнале
+    for (const p of list.archive ?? []) add(p.at, p.amount, p.category, p.icon);
   }
 
   const byCategory = [...categories.values()]

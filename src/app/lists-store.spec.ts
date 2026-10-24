@@ -25,6 +25,14 @@ describe('loadItems', () => {
   });
 });
 
+describe('toList archive', () => {
+  it('should default to an empty purchase log and keep a saved one', () => {
+    expect(toList('a', {}).archive).toEqual([]);
+    const log = [{ r: '1', name: 'Сир', amount: 6, category: 'Молочне', icon: '🥛', at: 5 }];
+    expect(toList('a', { archive: log }).archive).toEqual(log);
+  });
+});
+
 describe('toList', () => {
   it('gives default categories to lists created before categories existed', () => {
     const list = toList('abc', { name: 'Старий', ownerEmail: 'me@example.com', members: ['me@example.com'] });

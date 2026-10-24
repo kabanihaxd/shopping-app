@@ -1,7 +1,10 @@
 import { ShoppingListData } from './lists-store';
 
-/** Уведомление «в списке что-то изменили» — показывается внизу экрана */
-export type Notice = { id: string; listId: string; text: string };
+/** Кнопка на плашке (например, «Скасувати»): вместо ссылки «Відкрити» */
+export type NoticeAction = { label: string; run: () => void };
+
+/** Плашка внизу экрана: «в списке что-то изменили», «Видалено · Скасувати» */
+export type Notice = { id: string; listId: string; text: string; action?: NoticeAction };
 
 /** Сколько названий товаров показываем в одном уведомлении */
 const MAX_NAMES = 3;
@@ -37,17 +40,21 @@ export function describeChange(
 
   const added = after.toBuy.filter((x) => !oldIds.has(x.id));
   const bought = after.bought.filter((x) => !oldBoughtIds.has(x.id) && oldIds.has(x.id));
+  const returned = after.toBuy.filter((x) => oldBoughtIds.has(x.id));
   const removed = [...oldIds].filter((id) => !newIds.has(id)).length;
 
   const parts: string[] = [];
   if (added.length) parts.push(`додано — ${names(added)}`);
   if (bought.length) parts.push(`куплено — ${names(bought)}`);
+  if (returned.length) parts.push(`повернуто до списку — ${names(returned)}`);
   if (removed) parts.push(`видалено товарів: ${removed}`);
   // Изменился только состав участников или ссылка-приглашение — отдельно об этом уже сказано выше
   // (или это не повод беспокоить остальных)
   const onlyAccessChanged =
     after.name === before.name &&
-    (after.inviteCode !== before.inviteCode || after.members.length !== before.members.length);
+    (after.inviteCode !== before.inviteCode ||
+      after.members.length !== before.members.length ||
+      (after.archive?.length ?? 0) !== (before.archive?.length ?? 0)); // журнал покупок — служебная запись
   if (parts.length === 0 && onlyAccessChanged) return null;
   if (parts.length === 0) parts.push('список змінено');
 

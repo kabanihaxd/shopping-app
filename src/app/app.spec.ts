@@ -163,6 +163,23 @@ describe('App', () => {
     });
   });
 
+  it('should show an undo button on a notice and run it once', async () => {
+    const store = TestBed.inject(ListsStore) as unknown as FakeListsStore;
+    const run = vi.fn();
+    store.showNotice({ listId: 'l1', text: 'Видалено «Молоко»', action: { label: 'Скасувати', run } }, 5000);
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    const page = fixture.nativeElement as HTMLElement;
+
+    expect(page.querySelector('.notice-text')!.textContent).toContain('Видалено «Молоко»');
+    expect(page.querySelector('.notice-open')).toBeNull(); // вместо ссылки «Відкрити» — кнопка
+    page.querySelector<HTMLButtonElement>('.notice-action')!.click();
+    await fixture.whenStable();
+
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(page.querySelector('.notice')).toBeNull();
+  });
+
   it('should render the lists page on /', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/');

@@ -45,7 +45,11 @@
     @for (notice of store.notices(); track notice.id) {
       <div class="notice">
         <span class="notice-text">{{ notice.text }}</span>
-        <a class="notice-open" [routerLink]="['/list', notice.listId]" (click)="store.dismissNotice(notice.id)">Відкрити</a>
+        @if (notice.action; as action) {
+          <button class="notice-action" (click)="runNotice(notice)">{{ action.label }}</button>
+        } @else {
+          <a class="notice-open" [routerLink]="['/list', notice.listId]" (click)="store.dismissNotice(notice.id)">Відкрити</a>
+        }
         <button class="notice-close" (click)="store.dismissNotice(notice.id)" aria-label="Закрити сповіщення">×</button>
       </div>
     }

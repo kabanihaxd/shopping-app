@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { SwUpdate } from '@angular/service-worker';
 import { ListsStore } from './lists-store';
+import { Notice } from './notices';
 import { NicknameForm } from './nickname-form/nickname-form';
 
 /** Куда вернуться после входа, если человек пришёл по ссылке-приглашению */
@@ -109,6 +110,12 @@ export class App {
     } catch {
       // не запомнится — после перезагрузки снова «авто»
     }
+  }
+
+  /** Нажали кнопку на плашке («Скасувати») — выполняем и убираем плашку */
+  protected runNotice(notice: Notice) {
+    notice.action?.run();
+    this.store.dismissNotice(notice.id);
   }
 
   protected saveNickname(nickname: string) {

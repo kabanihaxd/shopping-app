@@ -347,3 +347,91 @@ h3 {
   color: var(--text-muted);
   font-size: 0.9rem;
 }
+
+.top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.store-toggle {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.store-toggle[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.store-note {
+  margin: 0.5rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/*
+ * Режим «У магазині». Размеры строки товара задаются переменными, которые читает ShoppingItem;
+ * остальное — крупнее палец-friendly элементы самой страницы (не меньше 44 px, как рекомендуют для касаний).
+ */
+.store-mode {
+  --check-size: 2.75rem;
+  --check-font: 1.7rem;
+  --row-pad: 0.8rem 0.5rem;
+  --row-font: 1.2rem;
+  --meta-font: 1rem;
+  --action-size: 2.75rem;
+  --action-pad: 0 0.6rem;
+  --action-font: 1.6rem;
+  --pin-font: 1.4rem;
+  --actions-gap: 0.4rem;
+}
+
+.store-mode .back-link,
+.store-mode .store-toggle {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.store-mode .store-toggle {
+  padding: 0 1.1rem;
+  font-size: 1rem;
+}
+
+.store-mode .add-row input,
+.store-mode .add-row select,
+.store-mode .add-btn,
+.store-mode .scan-btn,
+.store-mode .clear-btn {
+  min-height: 2.75rem;
+  font-size: 1.05rem;
+}
+
+.send-btn {
+  margin-bottom: 0.75rem;
+}
+
+.section-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.clear-btn.buy-again-btn {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.clear-btn.buy-again-btn:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: white;
+}

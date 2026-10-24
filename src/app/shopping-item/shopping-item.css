@@ -3,7 +3,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.5rem;
+  padding: var(--row-pad, 0.5rem);
   border-bottom: 1px solid var(--divider);
 }
 
@@ -16,14 +16,14 @@
 /* Квадратик-галочка: только он переносит товар в «Уже купил» и обратно */
 .check-btn {
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
+  width: var(--check-size, 22px);
+  height: var(--check-size, 22px);
   padding: 0;
   border: 2px solid var(--accent);
   border-radius: 4px;
   background: transparent;
   color: white;
-  font-size: 0.9rem;
+  font-size: var(--check-font, 0.9rem);
   line-height: 1;
   cursor: pointer;
 }
@@ -45,19 +45,20 @@
 }
 
 .item-main {
+  font-size: var(--row-font, 1rem);
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
 }
 
 .item-meta {
-  font-size: 0.85rem;
+  font-size: var(--meta-font, 0.85rem);
   color: var(--text-muted);
 }
 
 .actions {
   display: flex;
-  gap: 0.1rem;
+  gap: var(--actions-gap, 0.1rem);
 }
 
 .edit-btn:hover {
@@ -133,10 +134,12 @@
   background: transparent;
   border: 0;
   color: var(--text-faint);
-  font-size: 1.2rem;
+  font-size: var(--action-font, 1.2rem);
   line-height: 1;
   cursor: pointer;
-  padding: 0 0.4rem;
+  padding: var(--action-pad, 0 0.4rem);
+  min-width: var(--action-size, auto);
+  min-height: var(--action-size, auto);
   border-radius: 4px;
 }
 
@@ -162,7 +165,7 @@
 }
 
 .pin-btn {
-  font-size: 1rem;
+  font-size: var(--pin-font, 1rem);
 }
 
 .pin-btn:hover {

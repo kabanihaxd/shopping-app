@@ -239,6 +239,23 @@ describe('ShoppingList — доступ', () => {
     expect(list().members).toEqual(['me@example.com']);
   });
 
+  it('sends the to-buy list as text through the phone share menu', async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true });
+    try {
+      const { page, list, stable } = await openList([{ id: 'a', name: 'Сир', quantity: 1, price: 0, categoryId: '' }]);
+      const name = list().name;
+      expect(page.textContent).toContain('Надіслати');
+      page.querySelector<HTMLButtonElement>('.send-btn')!.click();
+      await stable();
+      expect(share).toHaveBeenCalledTimes(1);
+      expect(share.mock.calls[0][0].text.startsWith(`🛒 ${name}`)).toBe(true);
+      expect(share.mock.calls[0][0].text).toContain('• Сир');
+    } finally {
+      delete (navigator as { share?: unknown }).share;
+    }
+  });
+
   it('creates an invite link with a secret code, copies it, and can switch it off', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
@@ -479,5 +496,209 @@ describe('сканер штрихкодов', () => {
     button('Закрити').click();
     await stable();
     expect(page.querySelector('app-barcode-scanner')).toBeNull();
+  });
+});
+
+describe('режим «У магазині»', () => {
+  afterEach(() => {
+    localStorage.removeItem('store-mode');
+    delete (navigator as { wakeLock?: unknown }).wakeLock;
+  });
+
+  /** Подставляем «экранный замок» браузера, которого в тестовом окружении нет */
+  function mockWakeLock() {
+    const sentinel = { release: vi.fn().mockResolvedValue(undefined) };
+    const request = vi.fn().mockResolvedValue(sentinel);
+    Object.defineProperty(navigator, 'wakeLock', { value: { request }, configurable: true });
+    return { sentinel, request };
+  }
+
+  const toggle = (page: HTMLElement) => page.querySelector<HTMLButtonElement>('.store-toggle')!;
+
+  it('keeps the screen awake and enlarges the controls, then turns off again', async () => {
+    const { request, sentinel } = mockWakeLock();
+    const { page, stable } = await openList([item('Молоко')]);
+    expect(page.querySelector('.card')!.classList).not.toContain('store-mode');
+    expect(request).not.toHaveBeenCalled();
+
+    toggle(page).click();
+    await stable();
+    expect(page.querySelector('.card')!.classList).toContain('store-mode');
+    expect(request).toHaveBeenCalledWith('screen');
+    expect(page.querySelector('.store-note')!.textContent).toContain('Екран не гасне');
+    expect(toggle(page).getAttribute('aria-pressed')).toBe('true');
+    expect(localStorage.getItem('store-mode')).toBe('1');
+
+    toggle(page).click();
+    await stable();
+    expect(page.querySelector('.card')!.classList).not.toContain('store-mode');
+    expect(sentinel.release).toHaveBeenCalled();
+    expect(page.querySelector('.store-note')).toBeNull();
+  });
+
+  it('starts in store mode when it was left on', async () => {
+    localStorage.setItem('store-mode', '1');
+    const { request } = mockWakeLock();
+    const { page } = await openList();
+    expect(page.querySelector('.card')!.classList).toContain('store-mode');
+    expect(request).toHaveBeenCalled();
+  });
+
+  it('lets the screen sleep again when leaving the list', async () => {
+    localStorage.setItem('store-mode', '1');
+    const { sentinel } = mockWakeLock();
+    const { fixture, stable } = await openList();
+    await stable();
+
+    fixture.destroy();
+    await Promise.resolve();
+    expect(sentinel.release).toHaveBeenCalled();
+  });
+
+  it('is honest when the browser cannot keep the screen on', async () => {
+    const { page, stable } = await openList(); // в jsdom wakeLock нет
+    toggle(page).click();
+    await stable();
+
+    expect(page.querySelector('.card')!.classList).toContain('store-mode'); // кнопки всё равно крупнее
+    expect(page.querySelector('.store-note')!.textContent).toContain('не вміє тримати екран');
+  });
+});
+
+describe('отмена удаления', () => {
+  /** Плашка «Скасувати», которую показал список (её рисует App, а нажатие — это вызов action.run) */
+  const undo = (store: FakeListsStore) => store.notices()[0].action!.run();
+
+  it('shows «Видалено · Скасувати» for 5 seconds', async () => {
+    const { store, row, stable } = await openList([item('Молоко')]);
+
+    row('Молоко').querySelector<HTMLButtonElement>('.remove-btn')!.click();
+    await stable();
+
+    expect(store.notices()[0].text).toBe('Видалено «Молоко»');
+    expect(store.notices()[0].action!.label).toBe('Скасувати');
+    expect((store as unknown as { lastNoticeMs: number }).lastNoticeMs).toBe(5000);
+  });
+
+  it('puts an item back exactly where it was', async () => {
+    const { store, list, names, row, stable } = await openList([item('A'), item('B'), item('C')]);
+
+    row('B').querySelector<HTMLButtonElement>('.remove-btn')!.click();
+    await stable();
+    expect(names(list().toBuy)).toEqual(['A', 'C']);
+
+    undo(store);
+    await stable();
+    expect(names(list().toBuy)).toEqual(['A', 'B', 'C']);
+  });
+
+  it('brings back a bought item with its purchase date', async () => {
+    const bought = item('Хліб', { price: 2, boughtAt: 123 });
+    const { store, list, row, stable } = await openList([], [bought, item('Сіль')]);
+
+    row('Хліб').querySelector<HTMLButtonElement>('.remove-btn')!.click();
+    await stable();
+    expect(list().bought.map((x) => x.name)).toEqual(['Сіль']);
+
+    undo(store);
+    await stable();
+    expect(list().bought[0]).toEqual(bought);
+    expect(list().toBuy).toEqual([]);
+  });
+
+  it('does not lose what others added in the meantime, and does not duplicate on a second tap', async () => {
+    const { store, list, names, row, stable } = await openList([item('A'), item('B')]);
+
+    row('A').querySelector<HTMLButtonElement>('.remove-btn')!.click();
+    await stable();
+    store.update(list().id, (l) => ({ ...l, toBuy: [...l.toBuy, item('Від друга')] })); // тем временем добавил другой участник
+
+    undo(store);
+    undo(store);
+    await stable();
+    expect(names(list().toBuy)).toEqual(['A', 'B', 'Від друга']);
+  });
+
+  it('undoes «Очистити» for the whole bought list', async () => {
+    const { store, list, names, button, stable } = await openList([item('Новий')], [item('A'), item('B')]);
+
+    button('Очистити').click();
+    await stable();
+    expect(list().bought).toEqual([]);
+    expect(store.notices()[0].text).toBe('Очищено куплене: 2');
+
+    undo(store);
+    await stable();
+    expect(names(list().bought)).toEqual(['A', 'B']);
+    expect(names(list().toBuy)).toEqual(['Новий']);
+  });
+});
+
+describe('«Купити знову»', () => {
+  const bought = (name: string, extra: Partial<Item> = {}) =>
+    item(name, { price: 2, quantity: 3, boughtAt: 5000, categoryId: 'dairy', ...extra });
+
+  it('is hidden while nothing is bought', async () => {
+    const { page } = await openList([item('Молоко')]);
+    expect(page.querySelector('.buy-again-btn')).toBeNull();
+  });
+
+  it('returns everything bought to the list in one tap, without purchase dates', async () => {
+    const { store, list, names, button, stable } = await openList([item('Новий')], [bought('Молоко'), bought('Сир')]);
+
+    button('↩ Купити знову').click();
+    await stable();
+
+    expect(list().bought).toEqual([]);
+    expect(names(list().toBuy)).toEqual(['Новий', 'Молоко', 'Сир']);
+    expect(list().toBuy.every((x) => !('boughtAt' in x))).toBe(true);
+    expect(list().toBuy[1]).toMatchObject({ quantity: 3, price: 2, categoryId: 'dairy' }); // остальное сохранено
+    expect(store.notices()[0].text).toBe('Повернуто до списку: 2');
+  });
+
+  it('keeps the purchases in the log so statistics do not lose them', async () => {
+    const { list, button, stable } = await openList([], [bought('Молоко'), bought('Хліб', { categoryId: 'bakery', price: 1 })]);
+
+    button('↩ Купити знову').click();
+    await stable();
+
+    expect(list().archive!.map((r) => [r.name, r.amount, r.category, r.at])).toEqual([
+      ['Молоко', 6, 'Молочне та яйця', 5000],
+      ['Хліб', 3, 'Хліб і випічка', 5000],
+    ]);
+  });
+
+  it('can be undone: items go back to «bought» with their dates and the log is cleaned', async () => {
+    const { store, list, names, button, stable } = await openList([item('Новий')], [bought('Молоко'), bought('Сир')]);
+
+    button('↩ Купити знову').click();
+    await stable();
+    store.notices()[0].action!.run();
+    await stable();
+
+    expect(names(list().toBuy)).toEqual(['Новий']);
+    expect(list().bought.map((x) => [x.name, x.boughtAt])).toEqual([['Молоко', 5000], ['Сир', 5000]]);
+    expect(list().archive).toEqual([]);
+  });
+
+  it('works week after week: the same items go bought → back → bought and the log grows', async () => {
+    const { list, row, button, stable } = await openList([], [bought('Молоко')]);
+
+    button('↩ Купити знову').click();
+    await stable();
+    row('Молоко').querySelector<HTMLButtonElement>('.check-btn')!.click(); // купили на следующей неделе
+    await stable();
+    button('↩ Купити знову').click();
+    await stable();
+
+    expect(list().archive).toHaveLength(2);
+    expect(list().toBuy.map((x) => x.name)).toEqual(['Молоко']);
+  });
+
+  it('«Очистити» also keeps the purchases in the log', async () => {
+    const { list, button, stable } = await openList([], [bought('Молоко')]);
+    button('Очистити').click();
+    await stable();
+    expect(list().archive!.map((r) => r.name)).toEqual(['Молоко']);
   });
 });
