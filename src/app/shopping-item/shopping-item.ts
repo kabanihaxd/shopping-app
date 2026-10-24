@@ -3,7 +3,8 @@ import { CurrencyPipe } from '@angular/common';
 import { CdkDragHandle } from '@angular/cdk/drag-drop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Category } from '../category';
-import { Item, NOTE_MAX } from '../item';
+import { Item, NOTE_MAX, STORE_MAX } from '../item';
+import { DealHint } from '../price-book';
 
 @Component({
   imports: [CdkDragHandle, CurrencyPipe, ReactiveFormsModule],
@@ -19,6 +20,8 @@ export class ShoppingItem {
   readonly bought = input(false);
   /** Показать ручку ⠿ для перетаскивания (только в «Треба купити») */
   readonly showHandle = input(false);
+  /** «Дешевше в Сільпо…» — подсказка из истории цен (только для товаров «треба купити») */
+  readonly hint = input<DealHint | null>(null);
   /** Категории списка — для иконки и выбора в форме */
   readonly categories = input<Category[]>([]);
   /** Нажали на галочку: перенести в «Уже купил» или обратно */
@@ -39,14 +42,16 @@ export class ShoppingItem {
     price: [0, [Validators.required, Validators.min(0)]],
     categoryId: [''],
     note: ['', Validators.maxLength(NOTE_MAX)],
+    store: ['', Validators.maxLength(STORE_MAX)],
   });
 
   protected readonly noteMax = NOTE_MAX;
+  protected readonly storeMax = STORE_MAX;
 
   protected startEdit() {
-    const { name, quantity, price, note } = this.item();
+    const { name, quantity, price, note, store } = this.item();
     // Если категорию тем временем удалили — в форме будет «Без категорії»
-    this.form.reset({ name, quantity, price, categoryId: this.category()?.id ?? '', note: note ?? '' });
+    this.form.reset({ name, quantity, price, categoryId: this.category()?.id ?? '', note: note ?? '', store: store ?? '' });
     this.editing.set(true);
   }
 
@@ -59,12 +64,13 @@ export class ShoppingItem {
       this.form.markAllAsTouched();
       return;
     }
-    const { name, quantity, price, categoryId, note } = this.form.getRawValue();
-    // Пустая заметка — поля нет совсем (Firestore не принимает undefined)
-    const { note: oldNote, ...rest } = this.item();
+    const { name, quantity, price, categoryId, note, store } = this.form.getRawValue();
+    // Пустые заметка и магазин — полей нет совсем (Firestore не принимает undefined)
+    const { note: oldNote, store: oldStore, ...rest } = this.item();
     const edited: Item = { ...rest, name: name.trim(), quantity, price, categoryId };
     const text = note.trim();
-    this.save.emit(text ? { ...edited, note: text } : edited);
+    const shop = store.trim();
+    this.save.emit({ ...edited, ...(text ? { note: text } : {}), ...(shop ? { store: shop } : {}) });
     this.editing.set(false);
   }
 }

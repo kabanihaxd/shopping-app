@@ -11,6 +11,20 @@
         @default { Екран не гасне, поки список відкрито. }
       }
     </p>
+    <label class="where">
+      🏪 Де купуєте:
+      <input
+        class="where-input"
+        type="text"
+        list="known-stores"
+        maxlength="40"
+        autocomplete="off"
+        placeholder="Сільпо, АТБ… — куплене отримає цей магазин"
+        [value]="currentStore()"
+        (input)="setCurrentStore(where.value)"
+        #where
+      />
+    </label>
   }
 
   @if (!list()) {
@@ -96,6 +110,12 @@
       <button class="budget-btn budget-add" (click)="editingBudget.set(true)">💰 Задати бюджет</button>
     }
   </div>
+
+  <datalist id="known-stores">
+    @for (shop of knownStores(); track shop) {
+      <option [value]="shop"></option>
+    }
+  </datalist>
 
   <p class="rate">
     @if (rates.isLoading()) {
@@ -231,6 +251,7 @@
           cdkDrag
           cdkDragLockAxis="y"
           [showHandle]="true"
+          [hint]="hintFor(item)"
           [item]="item"
           [categories]="categories()"
           (toggle)="buy(item)"

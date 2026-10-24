@@ -18,6 +18,13 @@ describe('purchasesOf', () => {
     expect(p.icon).toBe('🛒');
   });
 
+  it('should remember the store and unit price only when a store is set', () => {
+    const [withStore, without] = purchasesOf([item('Сир', { store: 'Сільпо', price: 4 }), item('Хліб')], DEFAULT_CATEGORIES);
+    expect(withStore).toMatchObject({ store: 'Сільпо', unit: 4, amount: 8 });
+    expect('store' in without).toBe(false);
+    expect('unit' in without).toBe(false);
+  });
+
   it('should skip items without a purchase date, and give every record its own id', () => {
     const records = purchasesOf([item('A'), item('Давнє', { boughtAt: undefined }), item('B')], DEFAULT_CATEGORIES);
     expect(records.map((r) => r.name)).toEqual(['A', 'B']);

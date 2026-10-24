@@ -17,6 +17,7 @@ import { Item } from '../item';
 import { ListsStore } from '../lists-store';
 import { listToText } from '../list-text';
 import { ProductLookup, isBarcode } from '../product-lookup';
+import { buildPriceBook, dealHint, knownStoreNames } from '../price-book';
 import { purchasesOf } from '../purchase';
 import { ProgressBar } from '../progress-bar/progress-bar';
 import { ShoppingItem } from '../shopping-item/shopping-item';
@@ -27,6 +28,8 @@ import { ScreenWakeLock } from '../wake-lock';
 
 /** Ключ в localStorage: включён ли режим «У магазині» (личная настройка устройства) */
 const STORE_MODE_KEY = 'store-mode';
+/** В каком магазине человек сейчас (личная настройка устройства) */
+const CURRENT_STORE_KEY = 'current-store';
 /** Язык распознавания речи (личная настройка устройства) */
 const VOICE_LANG_KEY = 'voice-lang';
 type VoiceLang = 'uk-UA' | 'ru-RU';
@@ -61,6 +64,14 @@ function readVoiceLang(): VoiceLang {
     return localStorage.getItem(VOICE_LANG_KEY) === 'ru-RU' ? 'ru-RU' : 'uk-UA';
   } catch {
     return 'uk-UA';
+  }
+}
+
+function readCurrentStore(): string {
+  try {
+    return localStorage.getItem(CURRENT_STORE_KEY) ?? '';
+  } catch {
+    return '';
   }
 }
 
@@ -146,6 +157,31 @@ export class ShoppingList {
   protected readonly renaming = signal(false);
   /** Поле с названием — появляется только в режиме переименования */
   private readonly nameField = viewChild<ElementRef<HTMLInputElement>>('listName');
+
+  /** Магазин, в котором человек сейчас: в режиме «У магазині» им помечаются купленные товары */
+  protected readonly currentStore = signal(readCurrentStore());
+
+  protected setCurrentStore(value: string) {
+    this.currentStore.set(value);
+    try {
+      localStorage.setItem(CURRENT_STORE_KEY, value.trim());
+    } catch {
+      // не запомнится — после перезагрузки поле пустое
+    }
+  }
+
+  /** Книга цен из всех покупок во всех списках: где какой товар был дешевле */
+  private readonly priceBook = computed(() => buildPriceBook(this.store.lists()));
+  /** Магазины, которые уже встречались, — подсказки в полях «Магазин» */
+  protected readonly knownStores = computed(() =>
+    [...new Set([...knownStoreNames(this.store.lists()), this.currentStore().trim()].filter(Boolean))].sort((a, b) =>
+      a.localeCompare(b, 'uk'),
+    ),
+  );
+
+  protected hintFor(item: Item) {
+    return dealHint(item, this.priceBook());
+  }
 
   /** Режим «У магазині»: экран не гаснет, кнопки и галочки крупнее */
   protected readonly storeMode = signal(readStoreMode());
@@ -493,10 +529,12 @@ export class ShoppingList {
 
   protected buy(item: Item) {
     const { pinned, ...loose } = item; // купленные всегда по цене, закрепление теряется
+    // В магазине пометка о магазине ставится сама — одним нажатием, без ввода (и перебивает запланированный)
+    const shop = this.storeMode() ? this.currentStore().trim() : '';
     this.store.update(this.id(), (l) => ({
       ...l,
       toBuy: l.toBuy.filter((x) => x.id !== item.id),
-      bought: [...l.bought, { ...loose, boughtAt: Date.now() }], // дата нужна для статистики
+      bought: [...l.bought, { ...loose, ...(shop ? { store: shop } : {}), boughtAt: Date.now() }], // дата нужна для статистики
     }));
   }
 

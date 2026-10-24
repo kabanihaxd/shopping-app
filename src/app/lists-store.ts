@@ -87,6 +87,7 @@ export function loadItems(raw: unknown): Item[] {
       ...(typeof obj.boughtAt === 'number' ? { boughtAt: obj.boughtAt } : {}),
       ...(obj.pinned === true ? { pinned: true } : {}),
       ...(typeof obj.note === 'string' && obj.note.trim() ? { note: obj.note.trim() } : {}),
+      ...(typeof obj.store === 'string' && obj.store.trim() ? { store: obj.store.trim() } : {}),
     };
   });
 }

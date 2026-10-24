@@ -182,3 +182,13 @@
 .note-input {
   flex: 1 1 100%;
 }
+
+.store-input {
+  flex: 1 1 100%;
+}
+
+.item-hint {
+  font-size: var(--meta-font, 0.85rem);
+  color: var(--accent-text);
+  overflow-wrap: anywhere;
+}

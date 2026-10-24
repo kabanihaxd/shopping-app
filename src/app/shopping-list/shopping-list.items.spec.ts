@@ -950,3 +950,73 @@ describe('голосовой ввод', () => {
     }
   });
 });
+
+describe('магазин у товара и где дешевле', () => {
+  afterEach(() => {
+    localStorage.removeItem('store-mode');
+    localStorage.removeItem('current-store');
+  });
+
+  const priced = (name: string, price: number, extra: Partial<Item> = {}) => item(name, { price, ...extra });
+  const hints = (page: HTMLElement) => [...page.querySelectorAll('.item-hint')].map((h) => h.textContent!.replace(/\s+/g, ' ').trim());
+
+  it('stamps the current store on what is bought in store mode', async () => {
+    localStorage.setItem('store-mode', '1');
+    localStorage.setItem('current-store', 'Сільпо');
+    const { list, row, stable } = await openList([priced('Молоко', 1.2), priced('Хліб', 2)]);
+
+    row('Молоко').querySelector<HTMLButtonElement>('.check-btn')!.click();
+    await stable();
+
+    expect(list().bought[0]).toMatchObject({ name: 'Молоко', store: 'Сільпо', price: 1.2 });
+    expect('store' in list().toBuy[0]).toBe(false); // остальные не тронуты
+  });
+
+  it('lets the user type the store, remembers it, and offers known stores', async () => {
+    localStorage.setItem('store-mode', '1');
+    const { page, stable } = await openList([priced('Молоко', 1, { store: 'Метро' })]);
+
+    const where = page.querySelector<HTMLInputElement>('.where-input')!;
+    where.value = 'АТБ';
+    where.dispatchEvent(new Event('input'));
+    await stable();
+
+    expect(localStorage.getItem('current-store')).toBe('АТБ');
+    const options = [...page.querySelectorAll('#known-stores option')].map((o) => (o as HTMLOptionElement).value);
+    expect(options).toEqual(['АТБ', 'Метро']);
+  });
+
+  it('does not stamp a store outside store mode, and keeps a planned one', async () => {
+    localStorage.setItem('current-store', 'Сільпо');
+    const { list, row, stable } = await openList([priced('Молоко', 1.2, { store: 'Метро' }), priced('Хліб', 2)]);
+
+    row('Хліб').querySelector<HTMLButtonElement>('.check-btn')!.click();
+    row('Молоко').querySelector<HTMLButtonElement>('.check-btn')!.click();
+    await stable();
+
+    expect('store' in list().bought.find((x) => x.name === 'Хліб')!).toBe(false);
+    expect(list().bought.find((x) => x.name === 'Молоко')!.store).toBe('Метро');
+  });
+
+  it('shows where a product was cheaper, using purchases from all lists', async () => {
+    const { store, page, stable } = await openList([priced('Молоко', 1.5, { store: 'Метро' }), priced('Сир', 5)]);
+    // Другой мой список: молоко недавно брали в Сільпо дешевле
+    const other = store.create('Інший');
+    store.update(other, (l) => ({ ...l, bought: [priced('Молоко', 1.2, { store: 'Сільпо', boughtAt: Date.now() })] }));
+    await stable();
+
+    expect(hints(page)).toEqual(['💡 Дешевше в Сільпо: €1.20 (на €0.30 менше)']);
+    expect(page.querySelector('.item-hint')!.getAttribute('title')).toBe('Сільпо: €1.20');
+  });
+
+  it('uses the purchase log too, so prices survive «Купити знову»', async () => {
+    const { store, list, page, stable } = await openList([priced('Молоко', 2)]);
+    store.update(list().id, (l) => ({
+      ...l,
+      archive: [{ r: '1', name: 'Молоко', amount: 1.1, category: 'x', icon: '🥛', at: 5, store: 'АТБ', unit: 1.1 }],
+    }));
+    await stable();
+
+    expect(hints(page)[0]).toContain('Дешевше в АТБ: €1.10');
+  });
+});

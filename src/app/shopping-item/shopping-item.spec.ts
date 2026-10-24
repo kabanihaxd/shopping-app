@@ -182,4 +182,53 @@ describe('ShoppingItem', () => {
       expect(note.getAttribute('maxlength')).toBe('100');
     });
   });
+
+  describe('store and price hint', () => {
+    it('should show the store next to the price', async () => {
+      fixture.componentRef.setInput('item', { id: '1', name: 'Молоко', quantity: 1, price: 1.5, categoryId: '', store: 'Сільпо' });
+      await fixture.whenStable();
+      expect((fixture.nativeElement as HTMLElement).querySelector('.item-meta')!.textContent).toContain('🏪 Сільпо');
+    });
+
+    it('should save a trimmed store and drop the field when it is cleared', async () => {
+      const el = fixture.nativeElement as HTMLElement;
+      const saved: Record<string, unknown>[] = [];
+      component.save.subscribe((x) => saved.push(x as unknown as Record<string, unknown>));
+      const submit = async () => {
+        (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+        await fixture.whenStable();
+      };
+
+      (el.querySelector('.edit-btn') as HTMLButtonElement).click();
+      await fixture.whenStable();
+      const store = el.querySelector('input[formControlName="store"]') as HTMLInputElement;
+      store.value = '  АТБ ';
+      store.dispatchEvent(new Event('input'));
+      await submit();
+      expect(saved[0]['store']).toBe('АТБ');
+
+      fixture.componentRef.setInput('item', saved[0] as never);
+      await fixture.whenStable();
+      (el.querySelector('.edit-btn') as HTMLButtonElement).click();
+      await fixture.whenStable();
+      const again = el.querySelector('input[formControlName="store"]') as HTMLInputElement;
+      expect(again.value).toBe('АТБ');
+      again.value = '';
+      again.dispatchEvent(new Event('input'));
+      await submit();
+      expect('store' in saved[1]).toBe(false);
+    });
+
+    it('should show the cheaper-store hint with the whole price list in its tooltip', async () => {
+      fixture.componentRef.setInput('hint', { text: 'Дешевше в Сільпо: €1.20 (на €0.30 менше)', title: 'Сільпо: €1.20\nМетро: €1.50' });
+      await fixture.whenStable();
+      const hint = (fixture.nativeElement as HTMLElement).querySelector('.item-hint')!;
+      expect(hint.textContent).toContain('Дешевше в Сільпо');
+      expect(hint.getAttribute('title')).toContain('Метро: €1.50');
+    });
+
+    it('should show no hint by default', () => {
+      expect((fixture.nativeElement as HTMLElement).querySelector('.item-hint')).toBeNull();
+    });
+  });
 });

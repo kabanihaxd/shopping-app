@@ -16,6 +16,16 @@
       }
     </select>
     <input
+      class="store-input"
+      type="text"
+      list="known-stores"
+      formControlName="store"
+      [attr.maxlength]="storeMax"
+      autocomplete="off"
+      placeholder="Магазин: Сільпо, АТБ…"
+      aria-label="Магазин"
+    />
+    <input
       class="note-input"
       type="text"
       formControlName="note"
@@ -59,9 +69,15 @@
           × {{ item().price | currency: 'EUR' }} =
           <b>{{ item().quantity * item().price | currency: 'EUR' }}</b>
         }
+        @if (item().store) {
+          · 🏪 {{ item().store }}
+        }
       </span>
       @if (item().note; as note) {
         <span class="item-note">📝 {{ note }}</span>
+      }
+      @if (hint(); as deal) {
+        <span class="item-hint" [title]="deal.title">💡 {{ deal.text }}</span>
       }
     </span>
   </span>

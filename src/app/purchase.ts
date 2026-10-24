@@ -16,6 +16,9 @@ export type Purchase = {
   icon: string;
   /** Когда куплено (мс) */
   at: number;
+  /** Где куплено (если указали) и цена за единицу — для сравнения цен по магазинам */
+  store?: string;
+  unit?: number;
 };
 
 /** Записи журнала для купленных товаров. Товары без даты покупки (старые) в статистику не входят — пропускаем. */
@@ -31,6 +34,8 @@ export function purchasesOf(items: Item[], categories: Category[]): Purchase[] {
         category: category?.name ?? 'Без категорії',
         icon: category?.icon ?? '🛒',
         at: item.boughtAt,
+        // Firestore не принимает undefined — добавляем поля, только если они есть
+        ...(item.store ? { store: item.store, unit: item.price } : {}),
       },
     ];
   });

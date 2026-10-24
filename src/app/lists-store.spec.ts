@@ -19,6 +19,17 @@ describe('loadItems', () => {
     expect(loadItems([modern])).toEqual([modern]);
   });
 
+  it('keeps a trimmed store and drops an empty or broken one', () => {
+    const [a, b, c] = loadItems([
+      { id: '1', name: 'Молоко', store: ' Сільпо ' },
+      { id: '2', name: 'Хліб', store: '  ' },
+      { id: '3', name: 'Сир', store: 7 },
+    ]);
+    expect(a.store).toBe('Сільпо');
+    expect('store' in b).toBe(false);
+    expect('store' in c).toBe(false);
+  });
+
   it('keeps a trimmed note and drops an empty or broken one', () => {
     const [a, b, c] = loadItems([
       { id: '1', name: 'Молоко', note: '  без лактози ' },
