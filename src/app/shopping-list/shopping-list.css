@@ -55,8 +55,17 @@ h1 {
   font-size: 0.85rem;
 }
 
+/* Полоска прогресса стоит между счётчиком и курсом — даём ей воздух вместо «подтягивания» вверх */
+app-progress-bar {
+  margin-bottom: 0.6rem;
+}
+
+.counter:has(+ app-progress-bar) {
+  margin-bottom: 0.5rem;
+}
+
 .rate {
-  margin: -0.5rem 0 1rem;
+  margin: 0 0 1rem;
   color: #999;
   font-size: 0.85rem;
 }
