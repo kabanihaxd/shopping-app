@@ -23,6 +23,8 @@ export class ShoppingItem {
   readonly categories = input<Category[]>([]);
   /** Нажали на галочку: перенести в «Уже купил» или обратно */
   readonly toggle = output();
+  /** Нажали 📌: снять закрепление, товар снова встанет по цене */
+  readonly unpin = output();
   readonly remove = output();
   readonly save = output<Item>();
 

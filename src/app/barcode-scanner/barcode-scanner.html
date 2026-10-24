@@ -1,0 +1,30 @@
+<div class="overlay" role="dialog" aria-modal="true" aria-label="Сканер штрихкодів" (keydown.escape)="closed.emit()">
+  <div class="panel">
+    <h2>Скануйте штрихкод</h2>
+
+    @if (error(); as message) {
+      <p class="error" role="alert">{{ message }}</p>
+    } @else {
+      <div class="viewfinder">
+        <video #video playsinline muted></video>
+        <div class="frame" aria-hidden="true"></div>
+      </div>
+      <p class="hint">Наведіть камеру на штрихкод на упаковці — він розпізнається сам.</p>
+    }
+
+    <div class="manual">
+      <input
+        #code
+        type="text"
+        inputmode="numeric"
+        autocomplete="off"
+        placeholder="Або введіть цифри під штрихкодом"
+        aria-label="Код товару вручну"
+        (keydown.enter)="manual(code)"
+      />
+      <button class="find-btn" (click)="manual(code)">Знайти</button>
+    </div>
+
+    <button class="close-btn" (click)="closed.emit()">Закрити</button>
+  </div>
+</div>

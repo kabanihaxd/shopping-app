@@ -4,7 +4,7 @@
 
 .track {
   height: 6px;
-  background: #e0e0e0;
+  background: var(--border-soft);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -16,5 +16,5 @@
 }
 
 .fill.complete {
-  background: #2e7d32;
+  background: var(--fill);
 }

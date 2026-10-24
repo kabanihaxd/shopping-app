@@ -21,23 +21,23 @@
   height: 40px;
   font-size: 1.4rem;
   line-height: 1;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: white;
+  background: var(--surface);
   cursor: pointer;
 }
 
 .icon-btn:hover,
 .icon-btn.open {
-  border-color: #2e7d32;
-  background: #e8f5e9;
+  border-color: var(--accent-text);
+  background: var(--accent-soft);
 }
 
 .cat-name {
   flex: 1;
   min-width: 0;
   padding: 0.45rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 1rem;
 }
@@ -49,13 +49,13 @@
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: #777;
+  color: var(--text-muted);
   font-size: 1.1rem;
   cursor: pointer;
 }
 
 .small-btn:hover:not(:disabled) {
-  background: #f0f0f0;
+  background: var(--hover);
 }
 
 .small-btn:disabled {
@@ -64,8 +64,8 @@
 }
 
 .small-btn.danger:hover {
-  background: #ffcdd2;
-  color: #c62828;
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 /* Сетка иконок: подстраивается под ширину экрана */
@@ -75,9 +75,9 @@
   gap: 0.25rem;
   margin: 0.25rem 0 0.75rem;
   padding: 0.5rem;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-soft);
   border-radius: 8px;
-  background: #fafafa;
+  background: var(--hover);
 }
 
 .icon-grid button {
@@ -90,17 +90,17 @@
 }
 
 .icon-grid button:hover {
-  background: #e8f5e9;
+  background: var(--accent-soft);
 }
 
 .icon-grid button.selected {
-  border-color: #2e7d32;
-  background: #e8f5e9;
+  border-color: var(--accent-text);
+  background: var(--accent-soft);
 }
 
 .add-btn {
   flex-shrink: 0;
-  background: #2e7d32;
+  background: var(--accent);
   color: white;
   border: 0;
   padding: 0.5rem 1rem;
@@ -110,10 +110,10 @@
 }
 
 .add-btn:hover {
-  background: #1b5e20;
+  background: var(--accent-hover);
 }
 
 .hint {
-  color: #999;
+  color: var(--text-faint);
   font-size: 0.85rem;
 }

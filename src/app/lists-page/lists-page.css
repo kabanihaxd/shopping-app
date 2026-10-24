@@ -2,8 +2,9 @@
   max-width: 520px;
   margin: 2rem auto;
   padding: 1.5rem;
+  background: var(--surface);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px var(--shadow-color);
   font-family: system-ui, sans-serif;
 }
 
@@ -20,13 +21,13 @@ h1 {
 .name-input {
   flex: 1;
   padding: 0.5rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 1rem;
 }
 
 .add-btn {
-  background: #2e7d32;
+  background: var(--accent);
   color: white;
   border: 0;
   padding: 0.5rem 1rem;
@@ -36,11 +37,11 @@ h1 {
 }
 
 .add-btn:hover {
-  background: #1b5e20;
+  background: var(--accent-hover);
 }
 
 .empty {
-  color: #666;
+  color: var(--text-muted);
 }
 
 ul {
@@ -53,12 +54,12 @@ li {
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-soft);
   border-radius: 8px;
 }
 
 li:hover {
-  background: #f5f5f5;
+  background: var(--hover);
 }
 
 .list-link {
@@ -79,33 +80,33 @@ li:hover {
 .shared {
   font-weight: normal;
   font-size: 0.8rem;
-  color: #666;
+  color: var(--text-muted);
   margin-left: 0.25rem;
 }
 
 .list-meta {
-  color: #666;
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
 .remove-btn {
   background: transparent;
   border: 0;
-  color: #999;
+  color: var(--text-faint);
   font-size: 1.25rem;
   cursor: pointer;
   padding: 0 0.75rem;
 }
 
 .remove-btn:hover {
-  color: #c62828;
+  color: var(--danger);
 }
 
 .rename-btn {
   flex-shrink: 0;
   border: 0;
   background: transparent;
-  color: #999;
+  color: var(--text-faint);
   font-size: 1.1rem;
   line-height: 1;
   padding: 0.2rem 0.4rem;
@@ -114,8 +115,8 @@ li:hover {
 }
 
 .rename-btn:hover {
-  background: #e3f2fd;
-  color: #1565c0;
+  background: var(--info-soft);
+  color: var(--info);
 }
 
 .rename-input {
@@ -123,11 +124,39 @@ li:hover {
   min-width: 0;
   margin: 0.35rem 0 0.35rem 0.35rem;
   padding: 0.45rem;
-  border: 1px solid #2e7d32;
+  border: 1px solid var(--accent);
   border-radius: 6px;
   font-size: 1rem;
 }
 
 .progress {
   flex-basis: 100%;
+}
+
+.stats-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  color: var(--accent-text);
+  text-decoration: none;
+}
+
+.stats-link:hover {
+  text-decoration: underline;
+}
+
+.copy-btn {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.copy-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }

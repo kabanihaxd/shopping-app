@@ -1,0 +1,29 @@
+<div class="card">
+  <h1>{{ current() ? 'Змінити нікнейм' : 'Придумайте нікнейм' }}</h1>
+  <p>Інші учасники спільних списків бачитимуть його замість вашої пошти.</p>
+
+  <div class="row">
+    <input
+      #nick
+      type="text"
+      class="nick-input"
+      placeholder="Наприклад, Оля"
+      aria-label="Нікнейм"
+      [attr.maxlength]="maxLength"
+      [value]="current()"
+      [attr.aria-invalid]="error() ? true : null"
+      (keydown.enter)="submit(nick)"
+      (input)="error.set(null)"
+    />
+    <button class="save-btn" (click)="submit(nick)">Зберегти</button>
+  </div>
+
+  @if (error(); as message) {
+    <p class="error" role="alert">{{ message }}</p>
+  }
+
+  <button class="skip-btn" (click)="skip.emit()">{{ current() ? 'Скасувати' : 'Пропустити' }}</button>
+  @if (!current()) {
+    <p class="hint">Нікнейм можна задати пізніше — натисніть на своє ім'я вгорі сторінки.</p>
+  }
+</div>

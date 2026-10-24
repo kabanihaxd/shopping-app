@@ -29,13 +29,32 @@ service cloud.firestore {
         && request.resource.data.ownerEmail == myEmail()
         && request.resource.data.members == [myEmail()];
 
-      // Менять товары может любой участник; менять состав участников — только владелец.
+      // Код приглашения (inviteCode) — секрет в ссылке-приглашении. Менять его может только владелец.
+      function inviteCodeUnchanged() {
+        return request.resource.data.get('inviteCode', '') == resource.data.get('inviteCode', '');
+      }
+
+      // Вступление по ссылке: человека ещё нет в members, список читать он не может — но может
+      // дописать в members только себя, предъявив код из ссылки (joinCode == inviteCode списка).
+      // Больше ничего в документе при этом менять нельзя.
+      function joiningByInvite() {
+        return signedIn()
+          && !(myEmail() in resource.data.members)
+          && resource.data.get('inviteCode', '') != ''
+          && request.resource.data.joinCode == resource.data.inviteCode
+          && request.resource.data.members == resource.data.members.concat([myEmail()])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'joinCode']);
+      }
+
+      // Менять товары может любой участник; менять состав участников и код приглашения — только владелец.
       // Исключение: участник может удалить из members себя (выйти из списка).
-      allow update: if isMember()
+      allow update: if (isMember()
         && request.resource.data.ownerEmail == resource.data.ownerEmail
+        && (isOwner() || inviteCodeUnchanged())
         && (isOwner()
           || request.resource.data.members == resource.data.members
-          || request.resource.data.members == resource.data.members.removeAll([myEmail()]));
+          || request.resource.data.members == resource.data.members.removeAll([myEmail()])))
+        || joiningByInvite();
 
       // Удалить список целиком может только владелец
       allow delete: if isOwner();
@@ -44,6 +63,19 @@ service cloud.firestore {
     // Личная история добавленных товаров (для подсказок при вводе) — только своя
     match /histories/{email} {
       allow read, write: if signedIn() && email == myEmail();
+    }
+
+    // Нікнейми. Прочитать профиль можно, зная email человека (так участники списка видят друг друга
+    // по нікнейму), но перебрать все профили нельзя (list запрещён). Менять — только свой.
+    match /profiles/{email} {
+      allow get: if signedIn();
+      allow write: if signedIn()
+        && email == myEmail()
+        && request.resource.data.keys().hasOnly(['nickname'])
+        && request.resource.data.nickname is string
+        && request.resource.data.nickname.size() >= 2
+        && request.resource.data.nickname.size() <= 20
+        && !request.resource.data.nickname.matches('.*@.*');
     }
 
     // Кто заходил на сайт. Видит только админ (UID — внутренний номер аккаунта, не email;

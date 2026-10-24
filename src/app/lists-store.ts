@@ -1,4 +1,4 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, effect, signal, untracked } from '@angular/core';
 import { initializeApp } from 'firebase/app';
 import {
   GoogleAuthProvider,
@@ -11,11 +11,13 @@ import {
 } from 'firebase/auth';
 import {
   DocumentData,
+  QuerySnapshot,
   Unsubscribe,
   arrayRemove,
   arrayUnion,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   initializeFirestore,
   onSnapshot,
@@ -30,6 +32,8 @@ import {
 import { ADMIN_UID, firebaseConfig } from './firebase-config';
 import { Category, DEFAULT_CATEGORIES } from './category';
 import { Item } from './item';
+import { Notice, describeChange } from './notices';
+import { cleanNickname } from './nickname';
 import { HistoryEntry, forgetItem, rememberItem } from './suggestions';
 
 export type ShoppingListData = {
@@ -44,6 +48,10 @@ export type ShoppingListData = {
   toBuy: Item[];
   bought: Item[];
   createdAt: number;
+  /** Email того, кто изменил список последним — для уведомлений остальным участникам */
+  updatedBy?: string;
+  /** Секретный код ссылки-приглашения; пусто — ссылка выключена */
+  inviteCode?: string;
 };
 
 /** Человек, который хоть раз входил на сайт (коллекция users, id документа — email) */
@@ -71,8 +79,28 @@ export function loadItems(raw: unknown): Item[] {
       quantity: obj.quantity ?? 1,
       price: obj.price ?? 0,
       categoryId: obj.categoryId ?? '',
+      ...(typeof obj.boughtAt === 'number' ? { boughtAt: obj.boughtAt } : {}),
+      ...(obj.pinned === true ? { pinned: true } : {}),
     };
   });
+}
+
+/**
+ * Копия списка для повторяющихся покупок: все товары (и уже купленные) снова «треба купити»,
+ * с новыми id и без даты покупки. Категории сохраняются; доступ только у того, кто копирует.
+ */
+export function copyOfList(list: ShoppingListData, email: string, now: number): Omit<ShoppingListData, 'id'> {
+  const fresh = (items: Item[]) =>
+    items.map(({ boughtAt, ...item }) => ({ ...item, id: crypto.randomUUID() }));
+  return {
+    name: `${list.name} (копія)`,
+    ownerEmail: email,
+    members: [email],
+    categories: list.categories,
+    toBuy: fresh([...list.toBuy, ...list.bought]),
+    bought: [],
+    createdAt: now,
+  };
 }
 
 /** Документ из Firestore → наш тип (на случай, если каких-то полей нет) */
@@ -86,6 +114,8 @@ export function toList(id: string, data: DocumentData): ShoppingListData {
     toBuy: loadItems(data['toBuy']),
     bought: loadItems(data['bought']),
     createdAt: data['createdAt'] ?? 0,
+    updatedBy: data['updatedBy'] ?? '',
+    inviteCode: data['inviteCode'] ?? '',
   };
 }
 
@@ -123,9 +153,14 @@ export class ListsStore {
   private readonly listsRef = collection(this.db, 'lists');
   private readonly usersRef = collection(this.db, 'users');
   private readonly historiesRef = collection(this.db, 'histories');
+  private readonly profilesRef = collection(this.db, 'profiles');
   private stopListening?: Unsubscribe;
   private stopListeningUsers?: Unsubscribe;
   private stopListeningHistory?: Unsubscribe;
+  /** Первый ответ сервера — отправная точка: о том, что уже было в списках, не уведомляем */
+  private baselineReady = false;
+  /** Подписки на профили (нікнейми) людей из моих списков, ключ — email */
+  private readonly profileListeners = new Map<string, Unsubscribe>();
 
   /** Кто вошёл (null — никто) */
   readonly user = signal<User | null>(null);
@@ -143,7 +178,25 @@ export class ListsStore {
   /** Что я раньше добавлял — для подсказок при вводе. Личное: другие люди её не видят. */
   readonly history = signal<HistoryEntry[]>([]);
 
+  /** Уведомления об изменениях, которые сделали другие участники */
+  readonly notices = signal<Notice[]>([]);
+
+  /** Нікнейми известных мне людей: email → ник (пусто, если не задан) */
+  private readonly nicknames = signal<Record<string, string>>({});
+  /** Мой нікнейм (пусто — ещё не придумал) */
+  readonly nickname = computed(() => this.nicknames()[this.email()] ?? '');
+  /** true, когда сервер ответил, есть ли у меня нікнейм, — только тогда можно предлагать его придумать */
+  readonly profileReady = signal(false);
+
   constructor() {
+    // Следим за нікнеймами всех, кто есть в моих списках (и за своим): список людей меняется — подписки тоже
+    effect(() => {
+      const me = this.email();
+      const emails = new Set(me ? [me] : []);
+      for (const list of this.allLists()) list.members.forEach((m) => emails.add(m));
+      untracked(() => this.syncProfiles(emails));
+    });
+
     // Если вернулись со страницы входа Google с ошибкой — показать её
     getRedirectResult(this.auth).catch((e) => this.fail(e));
 
@@ -154,6 +207,11 @@ export class ListsStore {
       this.allLists.set([]);
       this.users.set([]);
       this.history.set([]);
+      this.notices.set([]);
+      this.baselineReady = false;
+      this.stopProfiles();
+      this.nicknames.set({});
+      this.profileReady.set(false);
       this.user.set(user);
       if (!user) {
         this.loading.set(false);
@@ -166,7 +224,9 @@ export class ListsStore {
       this.stopListening = onSnapshot(
         mine,
         (snapshot) => {
+          const previous = this.allLists();
           this.allLists.set(snapshot.docs.map((d) => toList(d.id, d.data())));
+          this.announceChanges(snapshot, previous);
           this.loading.set(false);
         },
         (err) => {
@@ -216,6 +276,15 @@ export class ListsStore {
     return ref.id;
   }
 
+  /** Копия списка одним нажатием — возвращает id новой копии (null, если списка нет) */
+  duplicate(id: string): string | null {
+    const list = this.lists().find((l) => l.id === id);
+    if (!list) return null;
+    const ref = doc(this.listsRef);
+    setDoc(ref, copyOfList(list, this.email(), Date.now())).catch((e) => this.fail(e));
+    return ref.id;
+  }
+
   /** Владелец удаляет список целиком, остальные — просто выходят из него */
   deleteList(id: string) {
     const list = this.lists().find((l) => l.id === id);
@@ -230,7 +299,97 @@ export class ListsStore {
     const list = this.lists().find((l) => l.id === id);
     if (!list) return;
     const { name, categories, toBuy, bought } = change(list);
-    updateDoc(doc(this.listsRef, id), { name, categories, toBuy, bought }).catch((e) => this.fail(e));
+    updateDoc(doc(this.listsRef, id), { name, categories, toBuy, bought, updatedBy: this.email() }).catch((e) => this.fail(e));
+  }
+
+  /** Как показывать человека: нікнейм, а если его нет — email */
+  nameOf(email: string): string {
+    return this.nicknames()[email] || email;
+  }
+
+  setNickname(raw: string) {
+    const nickname = cleanNickname(raw);
+    this.nicknames.update((all) => ({ ...all, [this.email()]: nickname })); // сразу, не дожидаясь сервера
+    setDoc(doc(this.profilesRef, this.email()), { nickname }).catch((e) => this.fail(e));
+  }
+
+  private syncProfiles(emails: Set<string>) {
+    for (const [email, stop] of this.profileListeners) {
+      if (emails.has(email)) continue;
+      stop();
+      this.profileListeners.delete(email);
+    }
+    for (const email of emails) {
+      if (this.profileListeners.has(email)) continue;
+      const stop = onSnapshot(
+        doc(this.profilesRef, email),
+        (snapshot) => {
+          const nickname = snapshot.data()?.['nickname'];
+          this.nicknames.update((all) => ({ ...all, [email]: typeof nickname === 'string' ? nickname : '' }));
+          if (email === this.email()) this.profileReady.set(true);
+        },
+        // Без красной полоски: пока правила не выложены, просто показываем почту и не пристаём с вопросом
+        (err) => console.error(err),
+      );
+      this.profileListeners.set(email, stop);
+    }
+  }
+
+  private stopProfiles() {
+    this.profileListeners.forEach((stop) => stop());
+    this.profileListeners.clear();
+  }
+
+  dismissNotice(id: string) {
+    this.notices.update((all) => all.filter((n) => n.id !== id));
+  }
+
+  /**
+   * Уведомляет о том, что изменили другие. Мои собственные правки пропускаем:
+   * пока сервер их не подтвердил, Firestore помечает документ hasPendingWrites.
+   */
+  private announceChanges(snapshot: QuerySnapshot<DocumentData>, previous: ShoppingListData[]) {
+    if (!this.baselineReady) {
+      // Ответ из кэша на устройстве — ещё не «настоящее» состояние, ждём сервер
+      this.baselineReady = !snapshot.metadata.fromCache;
+      return;
+    }
+    for (const change of snapshot.docChanges()) {
+      if (change.type === 'removed' || change.doc.metadata.hasPendingWrites) continue;
+      const before = previous.find((l) => l.id === change.doc.id);
+      if (change.type === 'modified' && !before) continue;
+      const after = toList(change.doc.id, change.doc.data());
+      const text = describeChange(before, after, this.email(), (e) => this.nicknames()[e] || e.split('@')[0]);
+      if (text) this.notify({ id: crypto.randomUUID(), listId: after.id, text });
+    }
+  }
+
+  private notify(notice: Notice) {
+    this.notices.update((all) => [...all, notice].slice(-3)); // больше трёх сразу не показываем
+    setTimeout(() => this.dismissNotice(notice.id), 10_000);
+  }
+
+  /** Включить (code) или выключить (null) ссылку-приглашение — только владелец */
+  setInviteCode(id: string, code: string | null) {
+    updateDoc(doc(this.listsRef, id), {
+      inviteCode: code ?? deleteField(),
+      updatedBy: this.email(),
+    }).catch((e) => this.fail(e));
+  }
+
+  /**
+   * Вступить в список по ссылке. Список ещё не наш, читать его нельзя — поэтому только дописываем
+   * себя в members и показываем серверу код из ссылки (правила проверяют его).
+   * Ошибку показывает страница приглашения сама, а не общая красная полоска.
+   */
+  async join(id: string, code: string): Promise<boolean> {
+    try {
+      await updateDoc(doc(this.listsRef, id), { members: arrayUnion(this.email()), joinCode: code });
+      return true;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
   }
 
   share(id: string, email: string) {

@@ -116,10 +116,24 @@
         <option [value]="cat.id">{{ cat.icon }} {{ cat.name }}</option>
       }
     </select>
+    <button
+      class="scan-btn"
+      type="button"
+      (click)="scanning.set(true)"
+      title="Сканувати штрихкод"
+      aria-label="Сканувати штрихкод"
+    >📷</button>
     <button class="add-btn" (click)="add(newItem, newQty, newPrice, newCat)">Додати</button>
   </div>
+  @if (scanMessage(); as message) {
+    <p class="scan-message" role="status">{{ message }}</p>
+  }
+  @if (scanning()) {
+    <app-barcode-scanner (scanned)="onScanned($event)" (closed)="scanning.set(false)" />
+  }
 
   <h2>Треба купити</h2>
+  <p class="hint sort-hint">Товари самі впорядковуються від дорогого до дешевого. Перетягніть товар — він залишиться там, де ви його поставили (📌).</p>
   <!-- cdkDropListGroup: товары можно перетаскивать между всеми группами внутри него -->
   <div cdkDropListGroup>
   @for (group of groups(); track group.id) {
@@ -134,6 +148,7 @@
           [item]="item"
           [categories]="categories()"
           (toggle)="buy(item)"
+          (unpin)="unpin(item)"
           (remove)="remove(item)"
           (save)="updateItem($event)"
         ></li>
@@ -157,7 +172,7 @@
     </p>
   }
   <ul>
-    @for (item of bought(); track item.id) {
+    @for (item of boughtShown(); track item.id) {
       <li
         app-shopping-item
         class="bought"
@@ -180,7 +195,10 @@
   <ul class="members">
     @for (email of list()!.members; track email) {
       <li>
-        {{ email }}
+        {{ nameOf(email) }}
+        @if (isOwner() && nameOf(email) !== email) {
+          <small class="member-email">{{ email }}</small>
+        }
         @if (email === list()!.ownerEmail) {
           <small>(власник)</small>
         } @else if (isOwner()) {
@@ -190,6 +208,32 @@
     }
   </ul>
   @if (isOwner()) {
+    <div class="invite-link">
+      @if (inviteLink(); as link) {
+        <p class="hint">Хто відкриє це посилання і ввійде через Google — одразу потрапить у список.</p>
+        <div class="add-row">
+          <input
+            #linkField
+            class="invite-input"
+            type="text"
+            readonly
+            aria-label="Посилання-запрошення"
+            [value]="link"
+            (focus)="linkField.select()"
+          />
+          <button class="add-btn" (click)="copyLink(link, linkField)">{{ copied() ? 'Скопійовано ✓' : 'Копіювати' }}</button>
+        </div>
+        <div class="invite-actions">
+          @if (canShare) {
+            <button class="add-btn" (click)="shareLink(link)">Поділитися…</button>
+          }
+          <button class="clear-btn" (click)="disableInvite()">Вимкнути посилання</button>
+        </div>
+      } @else {
+        <button class="add-btn" (click)="createInvite()">🔗 Створити посилання-запрошення</button>
+      }
+    </div>
+    <p class="hint">Або запросіть за email:</p>
     <div class="add-row">
       <input
         #inviteEmail

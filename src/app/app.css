@@ -5,25 +5,26 @@
 
 .status {
   text-align: center;
-  color: #666;
+  color: var(--text-muted);
   margin-top: 3rem;
 }
 
 .login {
+  background: var(--surface);
   max-width: 520px;
   margin: 2rem auto;
   padding: 1.5rem;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px var(--shadow-color);
   text-align: center;
 }
 
 .login p {
-  color: #666;
+  color: var(--text-muted);
 }
 
 .login-btn {
-  background: #2e7d32;
+  background: var(--accent);
   color: white;
   border: 0;
   padding: 0.6rem 1.2rem;
@@ -33,7 +34,7 @@
 }
 
 .login-btn:hover {
-  background: #1b5e20;
+  background: var(--accent-hover);
 }
 
 .user-bar {
@@ -43,17 +44,17 @@
   justify-content: flex-end;
   align-items: center;
   gap: 0.5rem;
-  color: #666;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
 .logout-btn {
   background: transparent;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.2rem 0.6rem;
   cursor: pointer;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .update-banner {
@@ -61,8 +62,8 @@
   margin: 1rem auto 0;
   padding: 0.5rem 0.75rem;
   border-radius: 8px;
-  background: #e8f5e9;
-  color: #1b5e20;
+  background: var(--accent-soft);
+  color: var(--accent-soft-text);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -70,7 +71,7 @@
 }
 
 .update-banner button {
-  background: #2e7d32;
+  background: var(--accent);
   color: white;
   border: 0;
   border-radius: 6px;
@@ -83,8 +84,8 @@
   margin: 1rem auto 0;
   padding: 0.5rem 0.75rem;
   border-radius: 8px;
-  background: #ffebee;
-  color: #c62828;
+  background: var(--danger-soft);
+  color: var(--danger);
   display: flex;
   justify-content: space-between;
   gap: 0.5rem;
@@ -96,4 +97,79 @@
   color: inherit;
   font-size: 1.1rem;
   cursor: pointer;
+}
+
+/* Уведомления об изменениях в общих списках — внизу экрана поверх страницы */
+.notices {
+  position: fixed;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 10;
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  background: #1b5e20;
+  color: white;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.notice-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.notice-open {
+  color: white;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.notice-close {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.nick-btn {
+  background: transparent;
+  border: 0;
+  padding: 0.2rem 0.3rem;
+  color: var(--text-muted);
+  font-size: inherit;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.nick-btn:hover {
+  background: var(--accent-faint);
+  color: var(--accent-text);
+}
+
+.theme-btn {
+  background: transparent;
+  border: 0;
+  padding: 0.2rem 0.35rem;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.theme-btn:hover {
+  background: var(--accent-faint);
 }

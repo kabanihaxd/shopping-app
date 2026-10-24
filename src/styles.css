@@ -1,9 +1,105 @@
 /* You can add global styles to this file, and also import other style files */
 
+/*
+ * Цвета приложения — переменные. Светлая тема по умолчанию; тёмная включается:
+ *  - сама, если в системе выбрана тёмная (и человек не выбрал светлую вручную),
+ *  - вручную кнопкой в шапке (атрибут data-theme на <html>).
+ */
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --text: #000000;
+  --text-strong: #444444;
+  --text-muted: #666666;
+  --text-faint: #999999;
+  --border: #cccccc;
+  --border-soft: #e0e0e0;
+  --divider: #eeeeee;
+  --hover: #f5f5f5;
+  --accent: #2e7d32;
+  --accent-hover: #1b5e20;
+  --accent-text: #2e7d32;
+  --accent-soft: #e8f5e9;
+  --accent-soft-text: #1b5e20;
+  --accent-faint: #f1f8f2;
+  --fill: #2e7d32;
+  --bar-zero: #cfd8d0;
+  --danger: #c62828;
+  --danger-soft: #ffebee;
+  --info: #1565c0;
+  --info-soft: #e3f2fd;
+  --warn-soft: #fff3e0;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #121614;
+    --surface: #1c211e;
+    --text: #e6e9e7;
+    --text-strong: #c9d0cb;
+    --text-muted: #a7afaa;
+    --text-faint: #8a928d;
+    --border: #3a423d;
+    --border-soft: #2f3731;
+    --divider: #2a312d;
+    --hover: #252c28;
+    --accent: #2e7d32;
+    --accent-hover: #2f8534;
+    --accent-text: #81c784;
+    --accent-soft: #1f3a23;
+    --accent-soft-text: #a5d6a7;
+    --accent-faint: #202b22;
+    --fill: #4caf50;
+    --bar-zero: #3a423d;
+    --danger: #ef6c6c;
+    --danger-soft: #3b1f22;
+    --info: #90caf9;
+    --info-soft: #1d2f42;
+    --warn-soft: #3d3220;
+    --shadow-color: rgba(0, 0, 0, 0.6);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #121614;
+  --surface: #1c211e;
+  --text: #e6e9e7;
+  --text-strong: #c9d0cb;
+  --text-muted: #a7afaa;
+  --text-faint: #8a928d;
+  --border: #3a423d;
+  --border-soft: #2f3731;
+  --divider: #2a312d;
+  --hover: #252c28;
+  --accent: #2e7d32;
+  --accent-hover: #2f8534;
+  --accent-text: #81c784;
+  --accent-soft: #1f3a23;
+  --accent-soft-text: #a5d6a7;
+  --accent-faint: #202b22;
+  --fill: #4caf50;
+  --bar-zero: #3a423d;
+  --danger: #ef6c6c;
+  --danger-soft: #3b1f22;
+  --info: #90caf9;
+  --info-soft: #1d2f42;
+  --warn-soft: #3d3220;
+  --shadow-color: rgba(0, 0, 0, 0.6);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
 /* Перетаскивание товаров (@angular/cdk/drag-drop) */
 .cdk-drag-preview {
   box-sizing: border-box;
-  background: white;
+  background: var(--surface);
   border-radius: 8px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
   font-family: system-ui, sans-serif;
@@ -13,7 +109,7 @@
 /* Место, куда упадёт товар */
 .cdk-drag-placeholder {
   opacity: 0.35;
-  background: #e8f5e9;
+  background: var(--accent-soft);
 }
 
 .cdk-drag-animating {

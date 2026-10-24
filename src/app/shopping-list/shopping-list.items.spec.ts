@@ -2,10 +2,12 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
-import { RATES_URL, ShoppingList } from './shopping-list';
+import { RATES_URL, ShoppingList, arrangeByPrice, sortByCostDesc } from './shopping-list';
 import { ListsStore } from '../lists-store';
 import { Item } from '../item';
 import { FakeListsStore, provideFakeListsStore } from '../testing/fake-lists-store';
+import { FakeScanEngine, provideFakeScanEngine } from '../testing/fake-scan-engine';
+import { ScanEngine } from '../barcode-scanner/scan-engine';
 
 /** Товар для тестов: указываем только то, что важно в конкретном тесте */
 const item = (name: string, extra: Partial<Item> = {}): Item => ({
@@ -24,7 +26,13 @@ const item = (name: string, extra: Partial<Item> = {}): Item => ({
 async function openList(toBuy: Item[] = [], bought: Item[] = []) {
   await TestBed.configureTestingModule({
     imports: [ShoppingList],
-    providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), provideFakeListsStore()],
+    providers: [
+      provideRouter([]),
+      provideHttpClient(),
+      provideHttpClientTesting(),
+      provideFakeListsStore(),
+      provideFakeScanEngine(),
+    ],
   }).compileComponents();
 
   const store = TestBed.inject(ListsStore) as unknown as FakeListsStore;
@@ -101,6 +109,19 @@ describe('ShoppingList — товары', () => {
     await stable();
     expect(names(list().toBuy)).toEqual(['Хліб', 'Молоко']);
     expect(list().bought).toEqual([]);
+  });
+
+  it('stamps the purchase time when bought and drops it when returned', async () => {
+    const { list, row, stable } = await openList([item('Молоко')]);
+    const before = Date.now();
+
+    row('Молоко').querySelector<HTMLButtonElement>('.check-btn')!.click();
+    await stable();
+    expect(list().bought[0].boughtAt).toBeGreaterThanOrEqual(before);
+
+    row('Молоко').querySelector<HTMLButtonElement>('.check-btn')!.click();
+    await stable();
+    expect('boughtAt' in list().toBuy[0]).toBe(false); // Firestore не принимает undefined — поля не должно быть совсем
   });
 
   it('deletes an item with ×', async () => {
@@ -218,6 +239,70 @@ describe('ShoppingList — доступ', () => {
     expect(list().members).toEqual(['me@example.com']);
   });
 
+  it('creates an invite link with a secret code, copies it, and can switch it off', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const { page, list, button, stable } = await openList();
+    expect(page.querySelector('input[aria-label="Посилання-запрошення"]')).toBeNull();
+
+    button('🔗 Створити посилання-запрошення').click();
+    await stable();
+    const code = list().inviteCode!;
+    expect(code).toMatch(/^[0-9a-f]{64}$/);
+    const link = page.querySelector<HTMLInputElement>('input[aria-label="Посилання-запрошення"]')!.value;
+    expect(link).toContain(`#/join/${list().id}/${code}`);
+
+    button('Копіювати').click();
+    await stable();
+    expect(writeText).toHaveBeenCalledWith(link);
+    expect(button('Скопійовано ✓')).toBeTruthy();
+
+    button('Вимкнути посилання').click();
+    await stable();
+    expect(list().inviteCode).toBe('');
+    expect(page.querySelector('input[aria-label="Посилання-запрошення"]')).toBeNull();
+  });
+
+  it('hides the invite link from guests', async () => {
+    const { store, page, stable } = await openList();
+    store.update(store.lists()[0].id, (l) => ({
+      ...l,
+      ownerEmail: 'boss@example.com',
+      members: ['boss@example.com', 'me@example.com'],
+      inviteCode: 'secret',
+    }));
+    await stable();
+
+    expect(page.querySelector('input[aria-label="Посилання-запрошення"]')).toBeNull();
+    expect(page.textContent).not.toContain('Створити посилання');
+  });
+
+  it('shows nicknames of members; the owner also sees their emails', async () => {
+    const { store, page, stable } = await openList();
+    store.update(store.lists()[0].id, (l) => ({ ...l, members: ['me@example.com', 'olga@example.com'] }));
+    store.nicknames.set({ 'olga@example.com': 'Оля' });
+    await stable();
+
+    const members = page.querySelector('.members')!;
+    expect(members.textContent).toContain('Оля');
+    expect(members.querySelector('.member-email')!.textContent).toContain('olga@example.com');
+  });
+
+  it('shows only nicknames to a guest', async () => {
+    const { store, page, stable } = await openList();
+    store.update(store.lists()[0].id, (l) => ({
+      ...l,
+      ownerEmail: 'boss@example.com',
+      members: ['boss@example.com', 'me@example.com'],
+    }));
+    store.nicknames.set({ 'boss@example.com': 'Шеф' });
+    await stable();
+
+    const members = page.querySelector('.members')!;
+    expect(members.textContent).toContain('Шеф');
+    expect(members.textContent).not.toContain('boss@example.com');
+  });
+
   it('does not let a guest invite or remove people', async () => {
     const { store, page, stable } = await openList();
     // Список чужой: владелец — другой человек, я только участник
@@ -227,5 +312,172 @@ describe('ShoppingList — доступ', () => {
     expect(page.querySelector('.invite-input')).toBeNull();
     expect(page.textContent).not.toContain('Прибрати');
     expect(page.textContent).toContain('(власник)');
+  });
+});
+
+describe('сортировка по цене и закрепление', () => {
+  const priced = (name: string, price: number, quantity = 1, categoryId = '', extra: Partial<Item> = {}): Item =>
+    item(name, { price, quantity, categoryId, ...extra });
+
+  /** В названии строки перед словом стоит эмодзи категории — для сравнения отбрасываем его 😀 */
+  const word = (el: Element) => el.textContent!.trim().replace(/^[^\p{L}]+/u, '');
+
+  it('sortByCostDesc: by quantity × price, equal ones keep their order, no price goes last', () => {
+    const sorted = sortByCostDesc([
+      priced('Безкоштовно', 0),
+      priced('Яйця', 0.3, 30), // 9
+      priced('Стейк', 8), // 8
+      priced('Перше', 2),
+      priced('Друге', 2),
+    ]);
+    expect(sorted.map((x) => x.name)).toEqual(['Яйця', 'Стейк', 'Перше', 'Друге', 'Безкоштовно']);
+  });
+
+  it('arrangeByPrice: pinned items keep their place, the others fill the rest by price', () => {
+    const arranged = arrangeByPrice([
+      priced('Дешево', 1, 1, '', { pinned: true }),
+      priced('Середньо', 5),
+      priced('Дорого', 9),
+      priced('Закріплено знизу', 3, 1, '', { pinned: true }),
+      priced('Ще дорожче', 20),
+    ]);
+    expect(arranged.map((x) => x.name)).toEqual(['Дешево', 'Ще дорожче', 'Дорого', 'Закріплено знизу', 'Середньо']);
+  });
+
+  it('arrangeByPrice without pinned items is plain sorting', () => {
+    const arranged = arrangeByPrice([priced('A', 1), priced('B', 3), priced('C', 2)]);
+    expect(arranged.map((x) => x.name)).toEqual(['B', 'C', 'A']);
+  });
+
+  it('sorts every group and the bought list on its own, keeping the stored order', async () => {
+    const { page, list, names } = await openList(
+      [
+        priced('Сік', 1, 1, 'drinks'),
+        priced('Вино', 9, 1, 'drinks'),
+        priced('Хліб', 2, 1, 'bakery'),
+        priced('Багет', 3, 1, 'bakery'),
+      ],
+      [priced('Сіль', 1), priced('Ікра', 20), priced('Чай', 5)],
+    );
+    const groupNames = [...page.querySelectorAll('.drop-list')].map((ul) =>
+      [...ul.querySelectorAll('li[app-shopping-item] .item-name')].map(word),
+    );
+    const bought = [...page.querySelectorAll('li.bought .item-name')].map(word);
+
+    expect(groupNames).toEqual([['Багет', 'Хліб'], ['Вино', 'Сік']]);
+    expect(bought).toEqual(['Ікра', 'Чай', 'Сіль']);
+    expect(names(list().toBuy)).toEqual(['Сік', 'Вино', 'Хліб', 'Багет']); // в базе порядок прежний
+  });
+
+  it('keeps a dragged item where it was dropped, even when pricier items arrive; 📌 unpins it', async () => {
+    const { fixture, page, store, list, names, stable } = await openList([
+      priced('Дешево', 1),
+      priced('Середньо', 5),
+      priced('Дорого', 9),
+    ]);
+    const shown = () => [...page.querySelectorAll('li[app-shopping-item] .item-name')].map(word);
+    expect(shown()).toEqual(['Дорого', 'Середньо', 'Дешево']);
+
+    // Тянем «Дешево» (последнее) на самый верх
+    const view = fixture.componentInstance as unknown as { groups: () => { id: string }[]; drop: (e: unknown) => void };
+    const group = { data: view.groups()[0] };
+    view.drop({ previousContainer: group, container: group, previousIndex: 2, currentIndex: 0 });
+    await stable();
+    expect(shown()).toEqual(['Дешево', 'Дорого', 'Середньо']);
+    expect(list().toBuy.find((x) => x.name === 'Дешево')!.pinned).toBe(true);
+
+    // Появился самый дорогой товар — «Дешево» всё равно остаётся первым
+    store.update(list().id, (l) => ({ ...l, toBuy: [...l.toBuy, priced('Ікра', 20)] }));
+    await stable();
+    expect(shown()).toEqual(['Дешево', 'Ікра', 'Дорого', 'Середньо']);
+
+    // Сняли закрепление — «Дешево» ушло по цене вниз
+    page.querySelector<HTMLButtonElement>('button[aria-label="Зняти закріплення"]')!.click();
+    await stable();
+    expect(shown()).toEqual(['Ікра', 'Дорого', 'Середньо', 'Дешево']);
+    expect('pinned' in list().toBuy.find((x) => x.name === 'Дешево')!).toBe(false);
+    expect(names(list().toBuy)).toContain('Дешево');
+    expect(page.querySelector('button[aria-label="Зняти закріплення"]')).toBeNull();
+  });
+
+  it('forgets the pin when a pinned item is bought', async () => {
+    const { list, row, stable } = await openList([priced('Дешево', 1, 1, '', { pinned: true })]);
+    row('Дешево').querySelector<HTMLButtonElement>('.check-btn')!.click();
+    await stable();
+    expect('pinned' in list().bought[0]).toBe(false);
+  });
+});
+
+describe('сканер штрихкодов', () => {
+  const OFF = 'https://world.openfoodfacts.org/api/v2/product/5449000000996.json?fields=product_name,product_name_uk';
+
+  async function openScanner() {
+    const env = await openList();
+    const engine = TestBed.inject(ScanEngine) as unknown as FakeScanEngine;
+    const http = TestBed.inject(HttpTestingController);
+    const nameField = () => env.page.querySelector<HTMLInputElement>('input[placeholder="Що купити?"]')!;
+    env.page.querySelector<HTMLButtonElement>('.scan-btn')!.click();
+    await env.stable();
+    return { ...env, engine, http, nameField };
+  }
+
+  it('opens the scanner, finds the product by code and fills in the name', async () => {
+    const { page, engine, http, nameField, stable } = await openScanner();
+    expect(page.querySelector('app-barcode-scanner')).not.toBeNull();
+
+    engine.emit('5449000000996');
+    http.expectOne(OFF).flush({ status: 1, product: { product_name: 'Coca-Cola Original', product_name_uk: '' } });
+    await stable();
+
+    expect(page.querySelector('app-barcode-scanner')).toBeNull(); // окно закрылось
+    expect(nameField().value).toBe('Coca-Cola Original');
+    expect(page.querySelector('.scan-message')!.textContent).toContain('Знайдено: «Coca-Cola Original»');
+  });
+
+  it('says so when the product is not in the database', async () => {
+    const { page, engine, http, nameField, stable } = await openScanner();
+
+    engine.emit('5449000000996');
+    http.expectOne(OFF).flush({ status: 0 });
+    await stable();
+
+    expect(nameField().value).toBe('');
+    expect(page.querySelector('.scan-message')!.textContent).toContain('немає в базі');
+  });
+
+  it('explains a network problem', async () => {
+    const { page, engine, http, stable } = await openScanner();
+
+    engine.emit('5449000000996');
+    http.expectOne(OFF).error(new ProgressEvent('error'));
+    await stable();
+
+    expect(page.querySelector('.scan-message')!.textContent).toContain('Перевірте інтернет');
+  });
+
+  it('does not ask the database about something that is not a barcode', async () => {
+    const { page, engine, http, stable } = await openScanner();
+
+    engine.emit('молоко');
+    await stable();
+
+    http.expectNone(() => true);
+    expect(page.querySelector('.scan-message')!.textContent).toContain('лише цифри');
+  });
+
+  it('lets the user type the code by hand and close the window', async () => {
+    const { page, http, button, stable } = await openScanner();
+
+    page.querySelector<HTMLInputElement>('input[aria-label="Код товару вручну"]')!.value = '5449000000996';
+    button('Знайти').click();
+    http.expectOne(OFF).flush({ status: 1, product: { product_name: 'Cola' } });
+    await stable();
+    expect(page.querySelector('input[placeholder="Що купити?"]') as HTMLInputElement).toHaveProperty('value', 'Cola');
+
+    page.querySelector<HTMLButtonElement>('.scan-btn')!.click();
+    await stable();
+    button('Закрити').click();
+    await stable();
+    expect(page.querySelector('app-barcode-scanner')).toBeNull();
   });
 });

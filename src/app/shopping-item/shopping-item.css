@@ -4,7 +4,7 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.5rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--divider);
 }
 
 .item-left {
@@ -19,7 +19,7 @@
   width: 22px;
   height: 22px;
   padding: 0;
-  border: 2px solid #2e7d32;
+  border: 2px solid var(--accent);
   border-radius: 4px;
   background: transparent;
   color: white;
@@ -29,15 +29,15 @@
 }
 
 .check-btn:hover {
-  background: #e8f5e9;
+  background: var(--accent-soft);
 }
 
 :host(.bought) .check-btn {
-  background: #2e7d32;
+  background: var(--accent);
 }
 
 :host(.bought) {
-  background: #e8f5e9;
+  background: var(--accent-soft);
 }
 
 :host(.bought) .item-name {
@@ -52,7 +52,7 @@
 
 .item-meta {
   font-size: 0.85rem;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .actions {
@@ -61,8 +61,8 @@
 }
 
 .edit-btn:hover {
-  background: #e3f2fd;
-  color: #1565c0;
+  background: var(--info-soft);
+  color: var(--info);
 }
 
 .edit-form {
@@ -76,13 +76,13 @@
 .edit-form input,
 .edit-form select {
   padding: 0.4rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 1rem;
 }
 
 .edit-form input.ng-invalid.ng-touched {
-  border-color: #c62828;
+  border-color: var(--danger);
 }
 
 .name-input {
@@ -95,7 +95,7 @@
 
 .cat-select {
   flex: 1 1 140px;
-  background: white;
+  background: var(--surface);
 }
 
 .item-icon {
@@ -103,7 +103,7 @@
 }
 
 .save-btn {
-  background: #2e7d32;
+  background: var(--accent);
   color: white;
   border: 0;
   padding: 0.4rem 0.9rem;
@@ -113,8 +113,8 @@
 
 .cancel-btn {
   background: transparent;
-  border: 1px solid #ccc;
-  color: #666;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
   padding: 0.4rem 0.9rem;
   border-radius: 6px;
   cursor: pointer;
@@ -123,15 +123,16 @@
 .error {
   flex: 1 1 100%;
   margin: 0;
-  color: #c62828;
+  color: var(--danger);
   font-size: 0.85rem;
 }
 
 .edit-btn,
+.pin-btn,
 .remove-btn {
   background: transparent;
   border: 0;
-  color: #999;
+  color: var(--text-faint);
   font-size: 1.2rem;
   line-height: 1;
   cursor: pointer;
@@ -140,15 +141,15 @@
 }
 
 .remove-btn:hover {
-  background: #ffcdd2;
-  color: #c62828;
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .drag-handle {
   flex-shrink: 0;
   margin: -0.5rem 0 -0.5rem -0.5rem;
   padding: 0.5rem 0.25rem 0.5rem 0.5rem; /* большая зона, чтобы легко попасть пальцем */
-  color: #bbb;
+  color: var(--text-faint);
   font-size: 1.2rem;
   line-height: 1;
   cursor: grab;
@@ -157,5 +158,13 @@
 }
 
 .drag-handle:hover {
-  color: #2e7d32;
+  color: var(--accent-text);
+}
+
+.pin-btn {
+  font-size: 1rem;
+}
+
+.pin-btn:hover {
+  background: var(--warn-soft);
 }

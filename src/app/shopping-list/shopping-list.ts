@@ -10,10 +10,12 @@ import {
 } from '@angular/cdk/drag-drop';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
+import { BarcodeScanner } from '../barcode-scanner/barcode-scanner';
 import { CategoriesEditor } from '../categories-editor/categories-editor';
 import { Category } from '../category';
 import { Item } from '../item';
 import { ListsStore } from '../lists-store';
+import { ProductLookup, isBarcode } from '../product-lookup';
 import { ProgressBar } from '../progress-bar/progress-bar';
 import { ShoppingItem } from '../shopping-item/shopping-item';
 import { HistoryEntry, suggest } from '../suggestions';
@@ -28,12 +30,29 @@ type RatesResponse = {
 /** Группа товаров одной категории в «Треба купити» */
 type ItemGroup = { id: string; title: string; items: Item[] };
 
+/** От дорогого к дешёвому по сумме (количество × цена). Порядок равных не меняется, товары без цены — в конце. */
+export function sortByCostDesc(items: Item[]): Item[] {
+  return [...items].sort((a, b) => b.quantity * b.price - a.quantity * a.price);
+}
+
+/**
+ * Порядок показа товаров одной группы: закреплённые (перетащенные вручную) стоят на своих местах —
+ * там, где они лежат в списке, — а остальные по очереди заполняют свободные места от дорогого к дешёвому.
+ * Без закреплённых это просто сортировка по цене.
+ */
+export function arrangeByPrice(items: Item[]): Item[] {
+  const free = sortByCostDesc(items.filter((x) => !x.pinned));
+  const rest = free[Symbol.iterator]();
+  return items.map((x) => (x.pinned ? x : rest.next().value!));
+}
+
 function sumCost(list: Item[]): number {
   return list.reduce((sum, x) => sum + x.quantity * x.price, 0);
 }
 
 @Component({
   imports: [
+    BarcodeScanner,
     CategoriesEditor,
     CdkDrag,
     CdkDropList,
@@ -51,6 +70,7 @@ function sumCost(list: Item[]): number {
 })
 export class ShoppingList {
   private readonly store = inject(ListsStore);
+  private readonly products = inject(ProductLookup);
 
   /** Берётся из адреса /list/:id (withComponentInputBinding в app.config.ts) */
   readonly id = input.required<string>();
@@ -70,8 +90,16 @@ export class ShoppingList {
       field?.select();
     });
   }
+  /** Окно сканера штрихкодов открыто */
+  protected readonly scanning = signal(false);
+  /** Что произошло после сканирования («Знайдено…», «Немає в базі…») */
+  protected readonly scanMessage = signal<string | null>(null);
+  private readonly newItemField = viewChild<ElementRef<HTMLInputElement>>('newItem');
+
   protected readonly toBuy = computed(() => this.list()?.toBuy ?? []);
   protected readonly bought = computed(() => this.list()?.bought ?? []);
+  /** «Вже куплено» в том порядке, в каком показываем */
+  protected readonly boughtShown = computed(() => sortByCostDesc(this.bought()));
   protected readonly categories = computed(() => this.list()?.categories ?? []);
 
   /** «Треба купити» по группам: в порядке категорий, товары без категории — в конце */
@@ -82,9 +110,9 @@ export class ShoppingList {
     const groups = cats.map((c) => ({
       id: c.id,
       title: `${c.icon} ${c.name}`,
-      items: items.filter((x) => x.categoryId === c.id),
+      items: arrangeByPrice(items.filter((x) => x.categoryId === c.id)),
     }));
-    groups.push({ id: '', title: 'Без категорії', items: items.filter((x) => !known.has(x.categoryId)) });
+    groups.push({ id: '', title: 'Без категорії', items: arrangeByPrice(items.filter((x) => !known.has(x.categoryId))) });
     return groups.filter((g) => g.items.length > 0);
   });
 
@@ -126,6 +154,33 @@ export class ShoppingList {
   protected readonly suggestions = computed(() =>
     suggest(this.query(), this.knownItems(), this.toBuy().map((x) => x.name)),
   );
+
+  /** Штрихкод считан (или введён вручную): ищем название в базе и подставляем в поле «Що купити?» */
+  protected async onScanned(code: string) {
+    this.scanning.set(false);
+    if (!isBarcode(code)) {
+      this.scanMessage.set('Це не схоже на штрихкод товару: потрібні лише цифри (6–14).');
+      return;
+    }
+    this.scanMessage.set('Шукаю товар…');
+    try {
+      const name = await this.products.find(code);
+      if (!name) {
+        this.scanMessage.set(`Товару з кодом ${code} немає в базі. Введіть назву вручну.`);
+        return;
+      }
+      const field = this.newItemField()?.nativeElement;
+      if (field) {
+        field.value = name;
+        field.focus();
+      }
+      this.query.set(name);
+      this.suggestionsOpen.set(true); // вдруг такой товар уже есть в подсказках — с ценой и категорией
+      this.scanMessage.set(`Знайдено: «${name}». Вкажіть кількість і ціну та додайте.`);
+    } catch {
+      this.scanMessage.set('Не вдалося звернутися до бази товарів. Перевірте інтернет.');
+    }
+  }
 
   protected categoryOf(entry: HistoryEntry) {
     return this.categories().find((c) => c.id === entry.categoryId);
@@ -218,7 +273,8 @@ export class ShoppingList {
 
   /**
    * Товар отпустили после перетаскивания. Внутри группы — меняем порядок,
-   * в другую группу — товар ещё и получает её категорию.
+   * в другую группу — товар ещё и получает её категорию. Перетащенный товар закрепляется
+   * на новом месте: цена его больше не двигает (пока не нажать 📌).
    * Порядок на экране = порядок в toBuy, поэтому просто собираем toBuy заново из групп.
    */
   protected drop(event: CdkDragDrop<ItemGroup>) {
@@ -229,10 +285,11 @@ export class ShoppingList {
     if (from === to) {
       if (event.previousIndex === event.currentIndex) return;
       moveItemInArray(to.items, event.previousIndex, event.currentIndex);
+      to.items[event.currentIndex] = { ...to.items[event.currentIndex], pinned: true };
     } else {
       transferArrayItem(from.items, to.items, event.previousIndex, event.currentIndex);
       const moved = to.items[event.currentIndex];
-      to.items[event.currentIndex] = { ...moved, categoryId: to.id };
+      to.items[event.currentIndex] = { ...moved, categoryId: to.id, pinned: true };
     }
 
     const toBuy = groups.flatMap((g) => g.items);
@@ -240,18 +297,29 @@ export class ShoppingList {
   }
 
   protected buy(item: Item) {
+    const { pinned, ...loose } = item; // купленные всегда по цене, закрепление теряется
     this.store.update(this.id(), (l) => ({
       ...l,
       toBuy: l.toBuy.filter((x) => x.id !== item.id),
-      bought: [...l.bought, item],
+      bought: [...l.bought, { ...loose, boughtAt: Date.now() }], // дата нужна для статистики
+    }));
+  }
+
+  /** Снять закрепление: товар встанет на место по цене */
+  protected unpin(item: Item) {
+    const { pinned, ...loose } = item;
+    this.store.update(this.id(), (l) => ({
+      ...l,
+      toBuy: l.toBuy.map((x) => (x.id === item.id ? loose : x)),
     }));
   }
 
   protected returnItem(item: Item) {
+    const { boughtAt, ...unbought } = item; // вернули в «Треба купити» — даты покупки больше нет
     this.store.update(this.id(), (l) => ({
       ...l,
       bought: l.bought.filter((x) => x.id !== item.id),
-      toBuy: [...l.toBuy, item],
+      toBuy: [...l.toBuy, unbought],
     }));
   }
 
@@ -316,6 +384,54 @@ export class ShoppingList {
     if (!email.includes('@')) return;
     this.store.share(this.id(), email);
     emailInput.value = '';
+  }
+
+  /** Ссылка-приглашение: открывается на этом же сайте, адрес вида /#/join/<список>/<код> */
+  protected readonly inviteLink = computed(() => {
+    const code = this.list()?.inviteCode;
+    return code ? `${location.origin}${location.pathname}#/join/${this.id()}/${code}` : '';
+  });
+
+  /** Показываем «Скопійовано ✓» пару секунд */
+  protected readonly copied = signal(false);
+  /** Меню «Поделиться» есть в телефонах и Safari; на компьютере — только копирование */
+  protected readonly canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
+  protected createInvite() {
+    // Два UUID подряд: 244 бита случайности — код нельзя подобрать
+    const code = (crypto.randomUUID() + crypto.randomUUID()).replaceAll('-', '');
+    this.store.setInviteCode(this.id(), code);
+  }
+
+  protected disableInvite() {
+    this.store.setInviteCode(this.id(), null);
+  }
+
+  protected async copyLink(link: string, field: HTMLInputElement) {
+    try {
+      await navigator.clipboard.writeText(link);
+      this.copied.set(true);
+      setTimeout(() => this.copied.set(false), 2000);
+    } catch {
+      field.select(); // буфер недоступен — хотя бы выделим, дальше Ctrl+C
+    }
+  }
+
+  protected async shareLink(link: string) {
+    try {
+      await navigator.share({
+        title: this.list()?.name,
+        text: `Приєднуйся до спільного списку покупок «${this.list()?.name}»`,
+        url: link,
+      });
+    } catch {
+      // человек закрыл меню — это не ошибка
+    }
+  }
+
+  /** Нікнейм участника или его почта, если ника нет */
+  protected nameOf(email: string): string {
+    return this.store.nameOf(email);
   }
 
   protected removeMember(email: string) {

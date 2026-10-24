@@ -44,6 +44,7 @@
         </a>
         <button class="rename-btn" (click)="renamingId.set(list.id)" title="Перейменувати" aria-label="Перейменувати список">✎</button>
         }
+        <button class="copy-btn" (click)="copy(list)" title="Створити копію" aria-label="Копіювати список">⧉</button>
         <button
           class="remove-btn"
           (click)="delete(list)"
@@ -52,4 +53,6 @@
       </li>
     }
   </ul>
+
+  <a class="stats-link" routerLink="/stats">📊 Статистика покупок</a>
 </div>

@@ -1,0 +1,101 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.75);
+  font-family: system-ui, sans-serif;
+}
+
+.panel {
+  width: 100%;
+  max-width: 480px;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 1rem;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.viewfinder {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #000;
+}
+
+video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Рамка-подсказка, куда поставить штрихкод */
+.frame {
+  position: absolute;
+  inset: 25% 10%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 8px;
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.25);
+}
+
+.hint {
+  margin: 0.5rem 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.error {
+  margin: 0 0 0.75rem;
+  color: var(--danger);
+}
+
+.manual {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.manual input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.find-btn {
+  background: var(--accent);
+  color: white;
+  border: 0;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.find-btn:hover {
+  background: var(--accent-hover);
+}
+
+.close-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem;
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+}

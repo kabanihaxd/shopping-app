@@ -42,6 +42,12 @@ export class ListsPage {
     this.router.navigate(['/list', id]);
   }
 
+  /** Копия списка (например, «Щотижневі продукти») — сразу открываем её */
+  protected copy(list: ShoppingListData) {
+    const id = this.store.duplicate(list.id);
+    if (id) this.router.navigate(['/list', id]);
+  }
+
   protected delete(list: ShoppingListData) {
     const question =
       list.ownerEmail === this.store.email()

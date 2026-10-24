@@ -55,6 +55,14 @@
     </span>
   </span>
   <span class="actions">
+    @if (item().pinned && !bought()) {
+      <button
+        class="pin-btn"
+        (click)="$event.stopPropagation(); unpin.emit()"
+        title="Закріплено на цьому місці. Натисніть, щоб відсортувати за ціною"
+        aria-label="Зняти закріплення"
+      >📌</button>
+    }
     <button
       class="edit-btn"
       (click)="$event.stopPropagation(); startEdit()"

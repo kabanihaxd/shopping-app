@@ -1,0 +1,61 @@
+<div class="card">
+  <a class="back" routerLink="/">← До списків</a>
+  <h1>Статистика покупок</h1>
+
+  <nav class="month-nav" aria-label="Місяць">
+    <button type="button" (click)="go(-1)" aria-label="Попередній місяць">‹</button>
+    <strong class="month-name" aria-live="polite">{{ monthName() }}</strong>
+    <button type="button" (click)="go(1)" [disabled]="isCurrent()" aria-label="Наступний місяць">›</button>
+  </nav>
+
+  @if (stats().count === 0) {
+    <p class="empty">За цей місяць покупок немає. Позначайте товари купленими — вони з'являться тут.</p>
+  } @else {
+    <p class="total">{{ stats().total | currency: 'EUR' }}</p>
+    <p class="total-note">витрачено · куплено товарів: {{ stats().count }}</p>
+
+    <h2>За категоріями</h2>
+    <ul class="categories">
+      @for (c of stats().byCategory; track c.key) {
+        <li>
+          <span class="cat-name">{{ c.icon }} {{ c.name }}</span>
+          <span class="cat-amount">{{ c.amount | currency: 'EUR' }}</span>
+          <span class="track" aria-hidden="true">
+            <span class="fill" [style.width.%]="percent(c.amount, maxCategory())"></span>
+          </span>
+        </li>
+      }
+    </ul>
+
+    <h2>За днями</h2>
+    <div class="days">
+      @for (amount of stats().byDay; track $index) {
+        <button
+          type="button"
+          class="col"
+          [class.selected]="selectedDay() === $index"
+          [attr.aria-label]="$index + 1 + ' ' + monthName() + ': ' + (amount | currency: 'EUR')"
+          (click)="selectedDay.set($index)"
+        >
+          <span class="bar" [class.zero]="amount === 0" [style.height.%]="percent(amount, maxDay())"></span>
+          @if ($index % 5 === 0) {
+            <span class="tick" aria-hidden="true">{{ $index + 1 }}</span>
+          }
+        </button>
+      }
+    </div>
+    <p class="picked" aria-live="polite">
+      @if (selectedText(); as picked) {
+        {{ picked.day }} число: <strong>{{ picked.amount | currency: 'EUR' }}</strong>
+      } @else {
+        Натисніть на колонку, щоб побачити суму за день.
+      }
+    </p>
+  }
+
+  @if (stats().undated > 0) {
+    <p class="note">
+      Товарів без дати покупки: {{ stats().undated }} — їх купили до появи статистики, тому в місяцях вони не враховані.
+    </p>
+  }
+</div>

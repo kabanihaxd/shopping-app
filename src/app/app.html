@@ -22,8 +22,32 @@
   </div>
 } @else {
   <header class="user-bar">
-    <span>{{ store.user()!.email }}</span>
+    <button
+      class="theme-btn"
+      (click)="cycleTheme()"
+      [title]="'Тема: ' + themeLabel().name + '. Натисніть, щоб змінити'"
+      [attr.aria-label]="'Тема: ' + themeLabel().name + '. Натисніть, щоб змінити'"
+    >{{ themeLabel().icon }}</button>
+    <button class="nick-btn" (click)="editingNickname.set(true)" title="Змінити нікнейм">
+      {{ store.nameOf(store.email()) }} ✎
+    </button>
     <button class="logout-btn" (click)="store.signOut()">Вийти</button>
   </header>
-  <router-outlet />
+  @if (showNicknameForm()) {
+    <app-nickname-form [current]="store.nickname()" (save)="saveNickname($event)" (skip)="closeNicknameForm()" />
+  } @else {
+    <router-outlet />
+  }
+}
+
+@if (store.notices().length > 0) {
+  <div class="notices" role="status" aria-live="polite">
+    @for (notice of store.notices(); track notice.id) {
+      <div class="notice">
+        <span class="notice-text">{{ notice.text }}</span>
+        <a class="notice-open" [routerLink]="['/list', notice.listId]" (click)="store.dismissNotice(notice.id)">Відкрити</a>
+        <button class="notice-close" (click)="store.dismissNotice(notice.id)" aria-label="Закрити сповіщення">×</button>
+      </div>
+    }
+  </div>
 }

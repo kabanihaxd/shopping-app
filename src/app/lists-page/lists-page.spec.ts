@@ -83,6 +83,30 @@ describe('ListsPage', () => {
     expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('Вийти зі списку «Чужий»'));
   });
 
+  it('should copy a list with all items back in "to buy" and open the copy', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const id = store.create('Щотижневі продукти');
+    store.update(id, (l) => ({
+      ...l,
+      members: [...l.members, 'friend@example.com'],
+      toBuy: [{ id: 'a', name: 'Хліб', quantity: 1, price: 2, categoryId: 'bakery' }],
+      bought: [{ id: 'b', name: 'Сир', quantity: 2, price: 5, categoryId: 'dairy', boughtAt: 123 }],
+    }));
+    const { page } = await openPage();
+
+    page.querySelector<HTMLButtonElement>('.copy-btn')!.click();
+
+    const [original, copy] = store.lists();
+    expect(copy.name).toBe('Щотижневі продукти (копія)');
+    expect(copy.toBuy.map((x) => x.name)).toEqual(['Хліб', 'Сир']);
+    expect(copy.toBuy[1]).toEqual({ id: expect.any(String), name: 'Сир', quantity: 2, price: 5, categoryId: 'dairy' });
+    expect(copy.bought).toEqual([]);
+    expect(copy.members).toEqual(['me@example.com']); // друзья доступа к копии не получают
+    expect(copy.toBuy[0].id).not.toBe('a'); // новые id — копия не связана с оригиналом
+    expect(original.bought.length).toBe(1); // оригинал не тронут
+    expect(navigate).toHaveBeenCalledWith(['/list', copy.id]);
+  });
+
   it('should rename a list right on the main page', async () => {
     store.create('Продукти');
     const { fixture, page } = await openPage();

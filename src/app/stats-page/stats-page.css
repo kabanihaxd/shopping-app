@@ -1,0 +1,167 @@
+.card {
+  max-width: 520px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px var(--shadow-color);
+  font-family: system-ui, sans-serif;
+}
+
+h1 {
+  margin-top: 0;
+}
+
+h2 {
+  font-size: 1.05rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.back {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  color: var(--accent-text);
+  text-decoration: none;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+.month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.month-nav button {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.month-nav button:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.month-nav button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.total {
+  margin: 0;
+  font-size: 2.25rem;
+  font-weight: 700;
+}
+
+.total-note,
+.empty,
+.note,
+.picked {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.total-note {
+  margin-top: 0;
+}
+
+.note {
+  margin-top: 1.5rem;
+}
+
+/* Категории: название и сумма в строке, под ними столбец */
+.categories {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.categories li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.2rem 0.75rem;
+  margin-bottom: 0.7rem;
+}
+
+.cat-amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.track {
+  grid-column: 1 / -1;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--accent-soft);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: var(--fill);
+}
+
+/* Дни: колонки растут снизу вверх от общей линии */
+.days {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  height: 150px;
+  padding-bottom: 1.25rem; /* место под подписи дней */
+  border-bottom: 1px solid var(--border);
+  box-sizing: content-box;
+}
+
+.col {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.col:hover,
+.col.selected {
+  background: var(--accent-faint);
+}
+
+.bar {
+  display: block;
+  width: 100%;
+  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+  background: var(--fill);
+}
+
+.bar.zero {
+  background: var(--bar-zero);
+}
+
+.col.selected .bar {
+  background: var(--accent-hover);
+}
+
+.tick {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.15rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.picked {
+  margin-top: 1.75rem;
+}
